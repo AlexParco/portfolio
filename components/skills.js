@@ -1,52 +1,51 @@
-import {Heading, Box, Stack} from '@chakra-ui/react'
+import {
+  Box, 
+  Stack, 
+  Text,
+} from '@chakra-ui/react'
 import Image from 'next/image'
 import jsIcon from '../public/javascript.svg'
 import goIcon from '../public/golang.svg'
-import hsIcon from '../public/haskell.svg'
 import pyIcon from '../public/python.svg'
 import gitIcon from '../public/git.svg'
 
 const SkillIcon = ({_src, _alt}) => {
   return (
-    <Box boxSize='50px'>
+    <Box flex='1' align='center' h='100' >
       <Image 
         src={_src}
         alt={_alt}
-        width="100"
-        height="100"
+        width="30"
+        height="30"
       />
+      <Text >
+        {_alt}
+      </Text>
     </Box>
   )
 } 
+
 const Skills = () => {
   return (
-    <Box mb={16}>
-      <Heading size="lg" mb={6}>
-        Skills
-      </Heading>
+    <Box mb={8}>
       <Stack 
         direction='row' 
-        spacing='24px'
       >
         <SkillIcon
           _src={jsIcon}
-          _alt='javascript'
+          _alt='JavaScript'
           />
         <SkillIcon
           _src={goIcon}
-          _alt='golang'
-        />
-        <SkillIcon
-          _src={hsIcon}
-          _alt='haskell'
+          _alt='Golang'
         />
         <SkillIcon
           _src={pyIcon}
-          _alt='python'
+          _alt='Python'
         />
         <SkillIcon
           _src={gitIcon}
-          _alt='python'
+          _alt='Git'
         />
       </Stack>
     </Box>

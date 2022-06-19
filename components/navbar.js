@@ -8,26 +8,28 @@ import {
   MenuList,
   MenuItem,
   IconButton,
+  useColorMode,
 } from '@chakra-ui/react'
 
 import NextLink from 'next/link'
+
+import { useRouter } from 'next/router'
 
 import { HamburgerIcon } from '@chakra-ui/icons'
 
 import ThemeButton from './themebutton.js'
 
-const NavLink = ({children, _href, path, _target, ...props }) => {
+const NavLink = ({children, _href, path, ...props }) => {
   const active = path == _href
 
   return (
     <NextLink
       href={_href}
-      passHref // pass href to child
-      scroll={false} // default true
+      passHref 
+      scroll={false} 
     >
         <Link
-          bg={active ? 'grassTeal' : undefined}
-          target={_target}
+          fontWeight={active? 'bold' : undefined}
           {...props}
         >
           {children}
@@ -38,13 +40,15 @@ const NavLink = ({children, _href, path, _target, ...props }) => {
 
 
 const NavBar = () => {
+  const router = useRouter()
+  const { colorMode } = useColorMode()
 
   return (
     <Box 
       as="nav" 
       position="fixed" 
       w="100%"
-      css={{ backdropFilter: 'blur(10px)' }}
+      bg={colorMode === 'light' ? 'white' : '#141414'}
       zIndex={1}
     >
       <Container 
@@ -67,15 +71,18 @@ const NavBar = () => {
           flexGrow={1}
           mt={{sm: 0}}
         >
-          <NavLink _href='/' path=''>
+          <NavLink _href='/' path={router.asPath}>
             Home
           </NavLink>
-          <NavLink _href='/works' path='works'>
+          <NavLink _href='/works' path={router.asPath}>
             Works
+          </NavLink>
+          <NavLink _href='/blogs' path={router.asPath}>
+            Blogs
           </NavLink>
           <NavLink 
             _href='https://github.com/alexparco/portfolio' 
-            _target='_blank' 
+            target='_blank' 
             path='source'
           >
             Source
@@ -100,6 +107,12 @@ const NavBar = () => {
                 </NextLink>
                 <NextLink href='/works' passHref>
                   <MenuItem as={Link}>Works</MenuItem>
+                </NextLink>
+                <NextLink href='/blogs' passHref>
+                  <MenuItem as={Link}>Blogs</MenuItem>
+                </NextLink>
+                <NextLink href='https://github.com/alexparco/portfolio' passHref>
+                  <MenuItem as={Link}>Source</MenuItem>
                 </NextLink>
               </MenuList>
             </Menu>

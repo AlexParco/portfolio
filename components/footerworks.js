@@ -18,7 +18,7 @@ const FooterWorks = () => {
       </Heading>
       <SimpleGrid 
         w='100%'
-        columns={2} 
+        columns={[1, 2]} 
         gap={6}
       >
         <GridBox/>
