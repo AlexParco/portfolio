@@ -34,7 +34,7 @@ const NavBar = () => {
         <HStack
           gap={3}
         >
-          <Link to="/" as={ReachLink}
+          <Link to="/portfolio/" as={ReachLink}
             _hover={{
               textDecoration: 'none'
             }}
@@ -44,7 +44,7 @@ const NavBar = () => {
               href === "" && <Box style={{ borderWidth: 1, borderColor: "#F1f1f1" }} />
             }
           </Link>
-          <Link to="/works" as={ReachLink}
+          <Link to="/portfolio/works" as={ReachLink}
             _hover={{
               textDecoration: 'none'
             }}
@@ -54,7 +54,7 @@ const NavBar = () => {
               href === "works" && <Box style={{ borderWidth: 1, borderColor: "#F1f1f1" }} />
             }
           </Link>
-          <Link to="/snippets" as={ReachLink}
+          <Link to="/portfolio/snippets" as={ReachLink}
             _hover={{
               textDecoration: 'none'
             }}

@@ -3,6 +3,7 @@ import { IconType } from "react-icons"
 import { FaGithub } from "react-icons/fa"
 import { HiOutlineExternalLink } from "react-icons/hi"
 import { NavLink } from "react-router-dom"
+import spring from '../../assets/spring.png'
 
 type Props = {
   title: string
@@ -19,7 +20,7 @@ const Work = ({ title, body, tags, _href, src, size }: Props) => {
   return (
     <Link
       as={NavLink}
-      to={`/works/${title}`}
+      to={`/portfolio/works/${title}`}
       _hover={{
         textDecoration: 'none',
         boxShadow: 'rgba(50, 50, 93, 0.25) 0px 2px 5px -1px, rgba(0, 0, 0, 0.3) 0px 1px 3px -1px',
@@ -36,7 +37,7 @@ const Work = ({ title, body, tags, _href, src, size }: Props) => {
         direction='column'
       >
         <Image
-          src={'./' + src}
+          src={src}
           alt={title}
           borderRadius='12px'
           objectFit='cover'

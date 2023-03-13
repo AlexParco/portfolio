@@ -17,20 +17,19 @@ function App() {
       <NavBar />
       <Routes>
         <Route
-          path="/"
+          path="/portfolio/"
           element={<Home />}
         />
-        <Route path='/works' element={<WorkPage />} />
-        <Route path='/snippets' element={<SnippetsPage />} />
+        <Route path='/portfolio/works' element={<WorkPage />} />
+        <Route path='/portfolio/snippets' element={<SnippetsPage />} />
         <Route
-          path="snippets/:title"
+          path="/portfolio/snippets/:title"
           element={<SnippetDetail />}
         />
         <Route
-          path="works/:title"
+          path="/portfolio/works/:title"
           element={<WorkDetail />}
         />
-        <Route path='/portfolio' element={<Redirect />} />
       </Routes>
     </VStack>
   )
