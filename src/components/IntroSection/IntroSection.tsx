@@ -23,7 +23,7 @@ const IntroSection = () => {
           <Text fontSize='md' color='blackAlpha.700'>Fronted/Backend Developer </Text>
           <HStack>
             <Text fontSize='sm' color='blackAlpha.500'><Icon w={3} h={3} as={FaMapMarkerAlt} /> Lima, Peru</Text>
-            <Text fontSize='sm' color='blackAlpha.500' ><Icon w={3} h={3} as={BiCodeBlock} /> 2 años programando</Text>
+            <Text fontSize='sm' color='blackAlpha.500' ><Icon w={3} h={3} as={BiCodeBlock} /> 3 años programando</Text>
           </HStack>
         </Box>
       </Stack>

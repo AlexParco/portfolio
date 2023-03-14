@@ -10,10 +10,13 @@ import {
 } from "@chakra-ui/react"
 import { Link as ReachLink, useLocation } from "react-router-dom"
 import { FaAsterisk } from "react-icons/fa"
+import { BiBorderBottom } from "react-icons/bi"
 
 const NavBar = () => {
   const href = useLocation().pathname.slice(1)
-  console.log(href)
+  const links: string[] = ["/portfolio/", "/portfolio/works", "/portfolio/snippets"]
+  const slashs: string[] = ["Home", "Works", "Snippets"]
+  console.log(href.split("/")[1])
 
   return (
     <Box
@@ -34,36 +37,23 @@ const NavBar = () => {
         <HStack
           gap={3}
         >
-          <Link to="/portfolio/" as={ReachLink}
-            _hover={{
-              textDecoration: 'none'
-            }}
-          >
-            Home
-            {
-              href === "" && <Box style={{ borderWidth: 1, borderColor: "#F1f1f1" }} />
-            }
-          </Link>
-          <Link to="/portfolio/works" as={ReachLink}
-            _hover={{
-              textDecoration: 'none'
-            }}
-          >
-            Works
-            {
-              href === "works" && <Box style={{ borderWidth: 1, borderColor: "#F1f1f1" }} />
-            }
-          </Link>
-          <Link to="/portfolio/snippets" as={ReachLink}
-            _hover={{
-              textDecoration: 'none'
-            }}
-          >
-            Snippets
-            {
-              href === "snippets" && <Box style={{ borderWidth: 1, borderColor: "#F1f1f1" }} />
-            }
-          </Link>
+          {
+            links.map((s, index) => (
+              <Link
+                key={index}
+                to={s}
+                as={ReachLink}
+                _hover={{
+                  textDecoration: 'none'
+                }}
+                style={{
+                  borderBottom: `2px solid ${href.split("/")[1] === s.split("/")[1] && '#242424'}`
+                }}
+              >
+                {slashs[index]}
+              </Link>
+            ))
+          }
         </HStack>
         {/* <HStack justify='center' align='center'> */}
         <Icon

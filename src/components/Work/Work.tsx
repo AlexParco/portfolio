@@ -3,7 +3,6 @@ import { IconType } from "react-icons"
 import { FaGithub } from "react-icons/fa"
 import { HiOutlineExternalLink } from "react-icons/hi"
 import { NavLink } from "react-router-dom"
-import spring from '../../assets/spring.png'
 
 type Props = {
   title: string
