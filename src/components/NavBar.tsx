@@ -14,7 +14,7 @@ import { BiBorderBottom } from "react-icons/bi"
 
 const NavBar = () => {
   const href = useLocation().pathname.slice(1)
-  const links: string[] = ["portfolio/", "portfolio/works", "portfolio/snippets"]
+  const links: string[] = ["", "works", "snippets"]
   const slashs: string[] = ["Home", "Works", "Snippets"]
 
   return (
