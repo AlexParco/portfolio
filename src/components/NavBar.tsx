@@ -14,9 +14,8 @@ import { BiBorderBottom } from "react-icons/bi"
 
 const NavBar = () => {
   const href = useLocation().pathname.slice(1)
-  const links: string[] = ["/portfolio/", "/portfolio/works", "/portfolio/snippets"]
+  const links: string[] = ["portfolio/", "portfolio/works", "portfolio/snippets"]
   const slashs: string[] = ["Home", "Works", "Snippets"]
-  console.log(href.split("/")[1])
 
   return (
     <Box
@@ -38,16 +37,16 @@ const NavBar = () => {
           gap={3}
         >
           {
-            links.map((s, index) => (
+            links.map((link, index) => (
               <Link
                 key={index}
-                to={s}
+                to={link}
                 as={ReachLink}
                 _hover={{
                   textDecoration: 'none'
                 }}
                 style={{
-                  borderBottom: `2px solid ${href.split("/")[1] === s.split("/")[1] && '#242424'}`
+                  borderBottom: `3px solid ${link === href ? '#fff' : '#242424'}`
                 }}
               >
                 {slashs[index]}
