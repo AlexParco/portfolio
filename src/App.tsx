@@ -4,7 +4,7 @@ import "./App.css";
 import NavBar from './components/NavBar';
 import Redirect from './components/redirect/Redirect';
 import Home from './pages/home';
-import SnippetDetail from './pages/snippetDetail';
+import SnippetDetail from './pages/snippetDetail/snippetDetail';
 import SnippetsPage from './pages/snippets';
 import WorkDetail from './pages/workDetail';
 import WorkPage from './pages/works';
