@@ -40,7 +40,7 @@ const WorkDetail = () => {
         objectFit='cover'
         shadow='xs'
         alt={doc?.title}
-        src={'../' + doc?.src}
+        src={doc?.src}
       />
       <Box >
         <Text fontSize='lg' >{doc?.body}</Text>
