@@ -14,7 +14,6 @@ type Props = {
 }
 
 const Work = ({ title, body, tags, _href, src, size }: Props) => {
-  const icons: IconType[] = [HiOutlineExternalLink, FaGithub]
 
   return (
     <Link
@@ -48,7 +47,6 @@ const Work = ({ title, body, tags, _href, src, size }: Props) => {
           {body}
         </Text>
       </Flex>
-      {/* </Link> */}
       <HStack
         mt='2'
         align='center'

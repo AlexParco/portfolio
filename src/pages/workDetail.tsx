@@ -15,10 +15,10 @@ const WorkDetail = () => {
 
   return (
     <Stack
+      minH='100vh'
       minW='850px'
-      maxW='850px'
-      minH='90vh'
-      pt={4}
+      mt='0 !important'
+      pt={20}
       px={10}
       gap='20px'
     >

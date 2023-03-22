@@ -8,8 +8,9 @@ import WorksGrid from '../components/WorksGrid/WorksGrid'
 const Home = () => {
   return (
     <Box
+      mt='0px !important'
       maxW='850px'
-      minH='90vh'
+      minH='100vh'
       pt={20}
       px={10}
     >

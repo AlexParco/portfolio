@@ -5,7 +5,7 @@ const SnippetsPage = () => {
   return (
     <Box
       mt='0px !important'
-      maxW='850px'
+      minW='850px'
       minH='100vh'
       pt={20}
       px={10}

@@ -3,10 +3,12 @@ import { Box, Heading, Text, Stack, Code, Link } from "@chakra-ui/react"
 const EasBuild = () => {
   return (
     <Stack
-      w='770px'
-      minH='90vh'
-      gap='20px'
+      mt='0px !important'
+      maxW='850px'
+      minH='100vh'
       pt={20}
+      px={10}
+      gap='20px'
       mb='8'
     >
 

@@ -12,8 +12,9 @@ const SnippetDetail = () => {
 
   return (
     <Box
-      maxW='850px'
-      minH='90vh'
+      minH='100vh'
+      minW='850px'
+      mt='0 !important'
       pt={4}
       px={10}
     >
