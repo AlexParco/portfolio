@@ -6,6 +6,7 @@ const EasBuild = () => {
       w='770px'
       minH='90vh'
       gap='20px'
+      pt={20}
       mb='8'
     >
 

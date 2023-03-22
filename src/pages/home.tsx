@@ -10,7 +10,7 @@ const Home = () => {
     <Box
       maxW='850px'
       minH='90vh'
-      pt={4}
+      pt={20}
       px={10}
     >
       <IntroSection />

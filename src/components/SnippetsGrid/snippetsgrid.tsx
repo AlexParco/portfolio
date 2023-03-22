@@ -5,9 +5,9 @@ import Snippet from "../snippet/snippet"
 const SnippetsGrid = () => {
   return (
     <HStack
+      pt={2}
       gap={10}
       justify='space-between'
-      align="center"
       my='5'>
       {
         SnippetsData.map((snpt, index) => (

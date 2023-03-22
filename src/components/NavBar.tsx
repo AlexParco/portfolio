@@ -19,6 +19,7 @@ const NavBar = () => {
 
   return (
     <Box
+      position='absolute'
       w='100%'
       maxW='850px'
     >

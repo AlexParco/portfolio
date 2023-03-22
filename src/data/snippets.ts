@@ -8,6 +8,11 @@ export const SnippetsData: Snippet[] = [
   {
     title: "Expo React | eas APK build",
     description: "",
-    date: "01/02/2023"
+    date: "03/21/2023"
+  },
+  {
+    title: "",
+    description: "",
+    date: "03/22/2023"
   }
 ]
