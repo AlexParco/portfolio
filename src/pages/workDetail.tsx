@@ -17,8 +17,10 @@ const WorkDetail = () => {
     <Stack
       minH='100vh'
       minW='850px'
+      maxW='850px'
       mt='0 !important'
       pt={20}
+      pb={4}
       px={10}
       gap='20px'
     >
@@ -34,7 +36,7 @@ const WorkDetail = () => {
         <Text mt='2'>{doc?.author} | {moment(doc?.date).format('LL')}</Text>
       </Box>
       <Image
-        width='400px'
+        width={doc?.size}
         alignSelf='center'
         borderRadius='12px'
         objectFit='cover'

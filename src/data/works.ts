@@ -1,4 +1,5 @@
 interface Post {
+  size: number;
   title: string;
   author: string;
   src: string;
@@ -12,6 +13,7 @@ export const WorksData: Post[] = [
   {
     title: "Spring-Login",
     author: 'Alexander Parco Flores',
+    size: 300,
     src: "spring.png",
     body: "Proyecto realizado para detallar el funcionamiento de la dependencia spring boot security aplicando autenticación, autorización, autoridad otorgada y roles a un login y register de usuarios",
     tags: ["ReactJs", "Java", "Spring-Boot"],
@@ -20,6 +22,7 @@ export const WorksData: Post[] = [
   },
   {
     title: "PokeApp",
+    size: 300,
     author: 'Alexander Parco Flores',
     src: "pokeapp1.png",
     body: "Pokeapp es una aplicación donde podrás agregar a una lista de favoritos los pokemons que más te gusten, además de esto podrás dejar un comentario sobre este y así interactuar con otros usuarios",
@@ -29,6 +32,7 @@ export const WorksData: Post[] = [
   },
   {
     title: "TodoApp",
+    size: 300,
     author: 'Alexander Parco Flores',
     src: "todoapp.png",
     body: "Todo App es la típica aplicación donde se puede listar diferentes tareas que tengamos pendientes, el objetivo de esta app es ayudar con nuestra organización diaria",
@@ -39,6 +43,7 @@ export const WorksData: Post[] = [
   {
     title: "Task Api - TypeScript",
     author: 'Alexander Parco Flores',
+    size: 300,
     src: "taskapi.PNG",
     body: "API escrita en TypeScript la cual cumples funciones de un CRUD para un TodoApp",
     tags: ["NodeJs", "TypeScript"],
