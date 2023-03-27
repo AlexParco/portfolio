@@ -9,6 +9,7 @@ const Stack = () => {
           <Tag
             key={index}
             p={2}
+            cursor='grab'
             gap='2'
             className='stack'
             bg='#242424' color="#F3F3E9">
