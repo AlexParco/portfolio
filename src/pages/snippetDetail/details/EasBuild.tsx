@@ -64,7 +64,7 @@ const EasBuild = () => {
             "android": {'{'}
           </Code>
           <Code colorScheme='blackAlpha.100'>
-            "android": "apk"
+            "buildType": "apk"
           </Code>
           <Code colorScheme='blackAlpha.100'>
             {'}'}
