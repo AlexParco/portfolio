@@ -58,7 +58,7 @@ const EasBuild = () => {
           backgroundColor='blackAlpha.200'
         >
           <Code colorScheme='blackAlpha.100'>
-            "dailyapp": {'{'}
+            "nameOfProfile": {'{'}
           </Code>
           <Code colorScheme='blackAlpha.100'>
             "android": {'{'}
@@ -67,10 +67,18 @@ const EasBuild = () => {
             "buildType": "apk"
           </Code>
           <Code colorScheme='blackAlpha.100'>
-            {'}'}
+            {'} }'}
           </Code>
         </Stack>
-        <Text>al terminar el build deberá regresar a la página de su proyecto en
+        <Text>ahora si ejecutaremos el comando para buildear la aplicación</Text>
+        <Stack
+          backgroundColor='blackAlpha.200'
+        >
+          <Code colorScheme='blackAlpha.100'>
+            eas build --profile {'<nameOfProfile>'}
+          </Code>
+        </Stack>
+        <Text>para terminar deberá regresar a la página de su proyecto en
           {' '}<Link href='https://expo.dev' isExternal>expo</Link>{' '}
           y descarga el apk de su aplicación</Text>
       </Stack>
