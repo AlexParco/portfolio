@@ -16,7 +16,7 @@ const WorkDetail = () => {
   return (
     <Stack
       minH='100vh'
-      minW='850px'
+      w='100%'
       maxW='850px'
       mt='0 !important'
       pt={20}
@@ -33,7 +33,7 @@ const WorkDetail = () => {
         >
           {doc?.title}
         </Heading>
-        <Text mt='2'>{doc?.author} | {moment(doc?.date).format('LL')}</Text>
+        <Text mt='2'>{doc?.author} | {moment(new Date(doc?.date as string)).format('LL')}</Text>
       </Box>
       <Image
         width={doc?.size}

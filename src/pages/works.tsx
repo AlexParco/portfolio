@@ -1,4 +1,4 @@
-import { Box, Heading } from "@chakra-ui/react"
+import { Box, Heading, Stack } from "@chakra-ui/react"
 import WorksGrid from "../components/WorksGrid/WorksGrid"
 import { WorksData } from "../data/works"
 
@@ -6,9 +6,9 @@ const WorkPage = () => {
 
   return (
     <Box
-      mt='0px !important'
-      maxW='850px'
       minH='100vh'
+      w='100%'
+      maxW='850px'
       pt={20}
       px={10}
     >

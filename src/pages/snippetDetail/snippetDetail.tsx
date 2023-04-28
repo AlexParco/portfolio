@@ -12,11 +12,10 @@ const SnippetDetail = () => {
 
   return (
     <Box
+      mt='0px !important'
       minH='100vh'
-      minW='850px'
-      mt='0 !important'
-      pt={4}
       px={10}
+      pt={4}
     >
       <EasBuild />
 
