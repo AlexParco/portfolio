@@ -10,7 +10,7 @@ const WorksGrid = ({ max }: Props) => {
 
   return (
     <Flex
-      justifyContent='center'
+      justifyContent='space-between'
       gap='10'
       wrap='wrap'
       align="center"

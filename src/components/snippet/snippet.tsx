@@ -21,7 +21,7 @@ const Snippet = ({ title, date }: Props) => {
       rounded='md'
       pl='8'
       pr='14'
-      py='2'
+      py='4'
     >
       <Text fontSize='xl'>{title}</Text>
       <Text>

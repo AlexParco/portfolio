@@ -13,9 +13,10 @@ import { FaAsterisk } from "react-icons/fa"
 import { BiBorderBottom } from "react-icons/bi"
 
 const NavBar = () => {
+  window.localStorage.setItem('chakra-ui-color-mode', 'light')
   const href = useLocation().pathname.slice(1)
   const links: string[] = ["", "works", "snippets"]
-  const slashs: string[] = ["Home", "Works", "Snippets"]
+  const slashs: string[] = ["Inicio", "Proyectos", "Fragmentos"]
 
   return (
     <Box
