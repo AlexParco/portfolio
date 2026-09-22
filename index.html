@@ -1,11 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- lang="es" es solo el valor de partida: el script de abajo lo corrige antes del primer
+     paint segun lo que el visitante haya elegido, y `DocumentMeta` lo mantiene al dia si lo
+     cambia en caliente. El sitio se sirve como SPA con una sola URL para los dos idiomas,
+     asi que el HTML estatico no puede saber de antemano cual toca. -->
+<html lang="es">
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="./420988.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alexander Parco Flores</title>
+  <link rel="icon" type="image/png" href="%BASE_URL%420988.png" />
+  <!-- Titulo y descripcion los reescribe `DocumentMeta` segun el idioma activo. Estos son
+       los del castellano, que es el de partida y el que ve un rastreador sin JavaScript. -->
+  <title>Alexander Parco Flores — Desarrollador full-stack</title>
+  <meta name="description"
+    content="Alexander Parco Flores, desarrollador full-stack en Lima, Perú. Tres años de trabajo, sobre todo en backend —APIs, servicios y microservicios en producción— y también en las interfaces que los consumen. Proyectos y notas, cada uno con su registro de decisión: el problema, qué se eligió y qué precio se pagó. Disponible en español e inglés." />
+  <meta name="color-scheme" content="dark light" />
+  <script>
+    // Bloqueante y antes del bundle: fija el IDIOMA del documento antes del primer paint.
+    // Tiene que replicar la logica del detector de i18next (misma clave, mismo orden:
+    // eleccion guardada y despues idioma del navegador) o `<html lang>` diria una cosa y
+    // la pagina se pintaria en otra durante el primer frame.
+    (function () {
+      var l;
+      try { l = localStorage.getItem("lang"); } catch (e) { l = null; }
+      if (l !== "es" && l !== "en") {
+        l = (navigator.language || "es").split("-")[0];
+        if (l !== "en") l = "es";
+      }
+      document.documentElement.lang = l;
+    })();
+  </script>
+  <script>
+    // Bloqueante y antes del bundle: fija el tema antes del primer paint (sin FOUC).
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        // Oscuro por defecto: la referencia es un impreso a una tinta sobre negro, y el
+        // claro es la version en papel del mismo sistema. Este valor y el de useTheme.ts
+        // tienen que coincidir o hay parpadeo en el primer render.
+        if (t !== "light" && t !== "dark") t = "dark";
+        document.documentElement.dataset.theme = t;
+      } catch (e) {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <style>
+    /* Entrada de ruta. La duracion la anula el bloque prefers-reduced-motion de theme.css. */
+    @keyframes enter {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .enter { animation: enter 160ms cubic-bezier(0.2, 0, 0, 1) both; }
+  </style>
 </head>
 
 <body>
