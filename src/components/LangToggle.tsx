@@ -5,16 +5,10 @@ import { type Lang } from '../i18n/lang'
 /**
  * El conmutador de idioma.
  *
- * Es un BOTON, no un enlace, porque el idioma ya no vive en la URL: cambiarlo no navega a
- * ninguna parte, solo repinta la pagina en la que ya estas. Un enlace mentiria sobre lo que
- * va a pasar (abrir en otra pestana no llevaria al otro idioma) y ademas ensuciaria el
- * historial con entradas que no son paginas distintas.
- *
- * El texto visible es el ENDONIMO —el idioma escrito en su propia lengua—, que es la
- * convencion: "English" dentro de una pagina en castellano solo puede significar "pasar al
- * ingles". Por eso el rotulo y su nombre accesible se leen del idioma DESTINO, no del
- * actual, y por eso el boton lleva `lang` del destino: sin el, un lector de pantalla
- * pronunciaria "Espanol" con fonetica inglesa.
+ * Es un BOTON, no un enlace: el idioma no vive en la URL, cambiarlo no navega a ninguna
+ * parte. El texto visible es el codigo del idioma DESTINO ("EN" dentro de la pagina en
+ * castellano) y el nombre accesible va completo y en ese idioma, con su `lang`, para que
+ * un lector de pantalla lo pronuncie con la fonetica correcta.
  */
 export function LangToggle(): React.JSX.Element {
   const { lang, cambiar } = useLang()
@@ -29,9 +23,9 @@ export function LangToggle(): React.JSX.Element {
       lang={otro}
       aria-label={enDestino('verEnIdioma')}
       title={enDestino('verEnIdioma')}
-      className="inline-flex h-11 shrink-0 items-center spec-tag text-ink-muted transition-colors duration-(--dur-state) hover:text-accent"
+      className="inline-flex h-9 min-w-9 items-center justify-center rounded-md px-1.5 font-mono text-meta text-ink-muted uppercase transition-colors duration-(--dur-state) hover:bg-bg-hover hover:text-ink"
     >
-      {enDestino('cambiarIdioma')}
+      {otro}
     </button>
   )
 }

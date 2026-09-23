@@ -16,6 +16,11 @@ const longDate: Record<Lang, Intl.DateTimeFormat> = {
   en: fmt('en', { day: 'numeric', month: 'long', year: 'numeric' }),
 }
 
+const shortDate: Record<Lang, Intl.DateTimeFormat> = {
+  es: fmt('es', { day: 'numeric', month: 'short', year: 'numeric' }),
+  en: fmt('en', { day: 'numeric', month: 'short', year: 'numeric' }),
+}
+
 const monthYear: Record<Lang, Intl.DateTimeFormat> = {
   es: fmt('es', { month: 'short', year: 'numeric' }),
   en: fmt('en', { month: 'short', year: 'numeric' }),
@@ -35,6 +40,11 @@ function parseISO(iso: string): Date {
 /** "2023-01-05" -> "5 de enero de 2023" / "5 January 2023" */
 export function formatDate(iso: string, lang: Lang): string {
   return longDate[lang].format(parseISO(iso))
+}
+
+/** "2023-01-05" -> "5 ene. 2023" / "5 Jan 2023". Para columnas de fecha estrechas. */
+export function formatShortDate(iso: string, lang: Lang): string {
+  return shortDate[lang].format(parseISO(iso)).replace(/ de /g, ' ')
 }
 
 /** "2023-01", null -> "ene. 2023 — actualidad" / "Jan 2023 — present" */

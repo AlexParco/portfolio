@@ -11,12 +11,12 @@ export function Diagram({ children }: { children: string }): React.JSX.Element {
   const { t } = useLang()
 
   return (
-    <figure>
+    <figure className="my-10">
       <pre
         tabIndex={0}
         role="region"
         aria-label={t('diagramaArquitectura')}
-        className="overflow-x-auto rounded-sharp border border-rule bg-surface p-5 text-micro leading-[1.55] text-ink-muted [tab-size:2]"
+        className="overflow-x-auto rounded-xl border border-rule p-5 font-mono text-micro leading-[1.55] text-ink-muted [tab-size:2]"
       >
         {children}
       </pre>

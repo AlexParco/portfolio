@@ -1,47 +1,49 @@
 import type { JSX } from 'react'
 import { useParams } from 'react-router-dom'
-import { Block } from '../components/Block'
-import { PieceHead } from '../components/PieceHead'
-import { Reading } from '../components/Reading'
+import { ArticleHead } from '../components/ArticleHead'
+import { ArticleNav } from '../components/ArticleNav'
+import { Prose } from '../components/Prose'
 import { NotFound } from './NotFound'
 import { snippets } from '../data/snippets/full'
+import type { Snippet } from '../data/types'
 import { formatDate } from '../lib/format'
+import { splitNoteTitle } from '../lib/titles'
 import { useLang } from '../i18n/useLang'
+import { rutaNota } from '../i18n/lang'
 
-/**
- * El titulo de una nota viene como "NestJS | @MessagePattern vs @EventPattern": el tema va
- * delante de una barra. Se separan igual que en el indice — el tema a su celda de la ficha
- * y el resto al titular— para que el mismo dato no aparezca dos veces en la misma pantalla.
- */
-function split(title: string): { topic: string[]; rest: string } {
-  const i = title.indexOf('|')
-  if (i === -1) return { topic: [], rest: title }
-  return { topic: [title.slice(0, i).trim()], rest: title.slice(i + 1).trim() }
-}
+// Mismo orden que la portada: la mas reciente primero. Los borradores no se enlazan.
+const publicadas = snippets
+  .filter((s) => !s.draft)
+  .sort((a, b) => b.date.localeCompare(a.date))
 
 export function SnippetDetail(): JSX.Element {
   const { lang, t, tr } = useLang()
   const { slug } = useParams<{ slug: string }>()
-  const snippet = snippets.find((item) => item.slug === slug)
+  const i = publicadas.findIndex((item) => item.slug === slug)
+  const snippet = publicadas[i]
 
   if (!snippet) return <NotFound />
 
-  const { topic, rest } = split(tr(snippet.title))
+  const { topic, rest } = splitNoteTitle(tr(snippet.title))
+  // "Anterior" es la mas antigua, "siguiente" la mas nueva: el orden de lectura de un blog.
+  const toNav = (s: Snippet | undefined) =>
+    s ? { href: rutaNota(s.slug), title: splitNoteTitle(tr(s.title)).rest } : null
 
   return (
     <article>
-      <PieceHead
-        kind={t('nota')}
+      <ArticleHead
+        kicker={topic || t('nota')}
+        date={formatDate(snippet.date, lang)}
+        dateISO={snippet.date}
         title={rest}
         summary={tr(snippet.summary)}
-        date={formatDate(snippet.date, lang)}
-        tags={topic}
+        tags={[]}
         links={[]}
       />
 
-      <Block id="nota" label={t('nota')}>
-        <Reading>{tr(snippet.content)}</Reading>
-      </Block>
+      <Prose>{tr(snippet.content)}</Prose>
+
+      <ArticleNav prev={toNav(publicadas[i + 1])} next={toNav(publicadas[i - 1])} />
     </article>
   )
 }

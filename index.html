@@ -13,8 +13,8 @@
        los del castellano, que es el de partida y el que ve un rastreador sin JavaScript. -->
   <title>Alexander Parco Flores — Desarrollador full-stack</title>
   <meta name="description"
-    content="Alexander Parco Flores, desarrollador full-stack en Lima, Perú. Tres años de trabajo, sobre todo en backend —APIs, servicios y microservicios en producción— y también en las interfaces que los consumen. Proyectos y notas, cada uno con su registro de decisión: el problema, qué se eligió y qué precio se pagó. Disponible en español e inglés." />
-  <meta name="color-scheme" content="dark light" />
+    content="Alexander Parco Flores, desarrollador full-stack en Lima, Perú. Cuatro años de trabajo, sobre todo en backend —APIs, servicios y microservicios en producción— y también en las interfaces que los consumen. Proyectos y notas, cada uno con su registro de decisión: el problema, qué se eligió y qué precio se pagó. Disponible en español e inglés." />
+  <meta name="color-scheme" content="light dark" />
   <script>
     // Bloqueante y antes del bundle: fija el IDIOMA del documento antes del primer paint.
     // Tiene que replicar la logica del detector de i18next (misma clave, mismo orden:
@@ -32,28 +32,16 @@
   </script>
   <script>
     // Bloqueante y antes del bundle: fija el tema antes del primer paint (sin FOUC).
+    // Sin eleccion guardada manda el sistema. Tiene que coincidir con useTheme.ts.
     (function () {
-      try {
-        var t = localStorage.getItem("theme");
-        // Oscuro por defecto: la referencia es un impreso a una tinta sobre negro, y el
-        // claro es la version en papel del mismo sistema. Este valor y el de useTheme.ts
-        // tienen que coincidir o hay parpadeo en el primer render.
-        if (t !== "light" && t !== "dark") t = "dark";
-        document.documentElement.dataset.theme = t;
-      } catch (e) {
-        document.documentElement.dataset.theme = "dark";
+      var t;
+      try { t = localStorage.getItem("theme"); } catch (e) { t = null; }
+      if (t !== "light" && t !== "dark") {
+        t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
       }
+      document.documentElement.dataset.theme = t;
     })();
   </script>
-  <style>
-    /* Entrada de ruta. La duracion la anula el bloque prefers-reduced-motion de theme.css. */
-    @keyframes enter {
-      from { opacity: 0; transform: translateY(4px); }
-      to   { opacity: 1; transform: none; }
-    }
-
-    .enter { animation: enter 160ms cubic-bezier(0.2, 0, 0, 1) both; }
-  </style>
 </head>
 
 <body>

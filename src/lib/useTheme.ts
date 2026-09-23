@@ -23,15 +23,18 @@ function persist(theme: Theme): void {
   }
 }
 
+function systemTheme(): Theme {
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 // El tema real ya lo escribio el script inline de index.html antes del primer paint.
-// El default es 'dark' —no el del sistema— y esa decision vive en los dos sitios a la
-// vez: si diverge de la del script inline de index.html, hay un parpadeo en el primer
-// render, que es justo lo que ese script existe para evitar.
+// Sin eleccion guardada manda el sistema: esa regla vive en los dos sitios y tienen que
+// coincidir, o hay parpadeo en el primer render.
 function readTheme(): Theme {
   const applied = document.documentElement.dataset.theme
   if (applied === 'dark' || applied === 'light') return applied
 
-  return readStored() ?? 'dark'
+  return readStored() ?? systemTheme()
 }
 
 export function useTheme(): { theme: Theme; toggle: () => void } {

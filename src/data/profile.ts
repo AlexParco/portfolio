@@ -18,8 +18,8 @@ export const profile = {
    * los anos, que la caja no lleva.
    */
   intro: {
-    es: 'Tres años en desarrollo full-stack desde Lima, Perú. Trabajo sobre todo en backend —APIs, servicios y microservicios en producción— y también en las interfaces que los consumen.',
-    en: 'Three years in full-stack development from Lima, Peru. I work mostly on the backend —APIs, services and microservices in production— and also on the interfaces that consume them.',
+    es: 'Cuatro años en desarrollo full-stack desde Lima, Perú. Trabajo sobre todo en backend —APIs, servicios y microservicios en producción— y también en las interfaces que los consumen.',
+    en: 'Four years in full-stack development from Lima, Peru. I work mostly on the backend —APIs, services and microservices in production— and also on the interfaces that consume them.',
   } satisfies L,
 
   /**

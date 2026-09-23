@@ -1,8 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { CursorRing } from './components/CursorRing'
-import { SheetHead } from './components/SheetHead'
-import { SheetFoot } from './components/SheetFoot'
+import { Header } from './components/Header'
+import { Footer } from './components/Footer'
 import { Home } from './pages/Home'
 import { NotFound } from './pages/NotFound'
 import { useLang } from './i18n/useLang'
@@ -17,6 +16,7 @@ const ProjectDetail = lazy(() =>
 const SnippetDetail = lazy(() =>
   import('./pages/SnippetDetail').then((m) => ({ default: m.SnippetDetail })),
 )
+const About = lazy(() => import('./pages/About').then((m) => ({ default: m.About })))
 // Banco de pruebas para elegir el diseno del pez. No esta enlazado desde ninguna parte;
 // se llega escribiendo /lab. Va en diferido para que no pese en el bundle inicial, y la
 // carpeta src/lab/ se borra entera cuando se decida.
@@ -59,23 +59,28 @@ function ScrollToTop(): null {
   const { pathname, hash } = useLocation()
 
   useEffect(() => {
-    // El scroll a un ancla lo resuelve Rail, que reintenta hasta que la seccion monta.
-    if (hash) return
-    // Salto seco: un scroll suave de 3000px al cambiar de ruta seria peor que ninguno.
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    if (!hash) {
+      // Salto seco: un scroll suave de 3000px al cambiar de ruta seria peor que ninguno.
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      return
+    }
+    // `/#notas` desde otra pagina: la seccion aun no existe en el primer frame. Se
+    // reintenta unos frames hasta que monta.
+    let intentos = 0
+    let frame = 0
+    const buscar = () => {
+      const el = document.getElementById(decodeURIComponent(hash.slice(1)))
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      else if (intentos++ < 30) frame = requestAnimationFrame(buscar)
+    }
+    buscar()
+    return () => cancelAnimationFrame(frame)
   }, [pathname, hash])
 
   return null
 }
 
-/**
- * Una sola columna, como una hoja de especificacion. La v5 tenia dos paneles con la
- * identidad fija a la izquierda; la referencia actual es una hoja que se lee de arriba
- * abajo, y un panel lateral pegado la convertia en otra cosa.
- *
- * La cabecera y el pie viven en el shell —no en cada pagina— para que al abrir un proyecto
- * solo cambie el cuerpo y la caja de identificacion no parpadee.
- */
+/** Una sola columna estrecha, como un blog: cabecera, contenido y pie. */
 function Shell(): React.JSX.Element {
   const { pathname } = useLocation()
   const { t } = useLang()
@@ -84,24 +89,23 @@ function Shell(): React.JSX.Element {
     <>
       <DocumentMeta />
       <ScrollToTop />
-      <CursorRing />
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-10 focus:bg-bg focus:px-3 focus:py-2 focus:font-mono focus:text-meta focus:text-ink"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-10 focus:rounded-md focus:bg-bg focus:px-3 focus:py-2 focus:text-ink"
       >
         {t('saltar')}
       </a>
 
-      <div className="mx-auto max-w-[1120px] px-5 py-6 md:px-10 md:py-10">
-        <SheetHead />
+      <div className="mx-auto max-w-page px-5 sm:px-6">
+        <Header />
         {/* tabIndex=-1: sin esto el skip-link cambia el hash pero no mueve el foco en Safari. */}
         <main id="main" key={pathname} tabIndex={-1} className="enter outline-none">
           <Suspense fallback={null}>
             {/* Una sola URL por pieza, con los segmentos SIEMPRE en ingles aunque la
-                pagina se lea en castellano. El idioma no entra en la ruta: se elige en el
-                conmutador y se recuerda en el navegador. */}
+                pagina se lea en castellano. El idioma no entra en la ruta. */}
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
               <Route path="/projects/:slug" element={<ProjectDetail />} />
               <Route path="/notes/:slug" element={<SnippetDetail />} />
               <Route path="/lab" element={<LabPeces />} />
@@ -109,7 +113,7 @@ function Shell(): React.JSX.Element {
             </Routes>
           </Suspense>
         </main>
-        <SheetFoot />
+        <Footer />
       </div>
     </>
   )

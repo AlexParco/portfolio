@@ -1,76 +1,148 @@
-import { type JSX, useMemo } from 'react'
-import { SpecGrid, SpecCell } from '../components/Spec'
-import { IndexGrid } from '../components/IndexGrid'
-import { Ledger } from '../components/Ledger'
-import { buildIndex } from '../lib/index-items'
+import type { JSX } from 'react'
+import { Link } from 'react-router-dom'
+import { Section } from '../components/Section'
 import { profile } from '../data/profile'
 import { projects } from '../data/projects'
 import { snippets } from '../data/snippets'
+import { experience } from '../data/experience'
+import { formatShortDate, formatYear, formatYearRange } from '../lib/format'
+import { splitNoteTitle } from '../lib/titles'
 import { useLang } from '../i18n/useLang'
+import { rutaNota, rutaProyecto } from '../i18n/lang'
 
+// Las notas se leen como un blog: la mas reciente primero. Los proyectos NO se reordenan:
+// su orden en `projects/index.ts` es deliberado (produccion antes que herramientas).
+const notasPorFecha = [...snippets].sort((a, b) => b.date.localeCompare(a.date))
 
-/**
- * La hoja. Cabecera en cajas, titular enorme, aire, y despues los bloques de contenido,
- * cada uno precedido por su propia caja de especificacion.
- *
- * El aire tras el titular es deliberado y grande: en la referencia el vacio es lo que
- * separa la portada de la ficha, y es lo unico que le da peso al titular sin subirle el
- * cuerpo. Rellenarlo lo desactivaria.
- */
 export function Home(): JSX.Element {
   const { lang, t, tr } = useLang()
-  // El indice se aplana ya traducido, asi que depende del idioma: se recalcula solo
-  // cuando este cambia, no en cada render.
-  const items = useMemo(() => buildIndex(projects, snippets, lang), [lang])
-  const bioParagraphs = tr(profile.bio).trim().split(/\n{2,}/)
-  const proyectos = items.filter((i) => i.kind === 'proyecto').length
-  const notas = items.length - proyectos
 
   return (
     <>
-      <SpecGrid>
-        <SpecCell label={t('indice')}>
-          {items.length} {t('piezas')} · {proyectos} {t('proyectos')} · {notas} {t('notas')}
-        </SpecCell>
-        <SpecCell label={t('periodo')}>2023 — 2026</SpecCell>
-      </SpecGrid>
+      <section aria-labelledby="hola">
+        <h1 id="hola" className="text-h1 text-ink">
+          {profile.name}
+        </h1>
+        <p className="mt-2 text-ink-muted">
+          {tr(profile.role)} · {tr(profile.location)}
+        </p>
+        <p className="mt-6 text-lead text-ink-muted">{tr(profile.intro)}</p>
 
-      <h2 className="mt-8 text-h1 text-ink" id="indice">
-        {t('indice')}
-      </h2>
-      <p className="spec-tag mt-1 mb-6 text-ink-muted">
-        01 — {String(items.length).padStart(2, '0')}
-      </p>
+        <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[0.9375rem]">
+          {profile.socials.map((social) => {
+            const external = !social.url.startsWith('mailto:')
+            return (
+              <li key={social.label}>
+                <a
+                  href={social.url}
+                  className="link"
+                  {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                >
+                  {social.label}
+                  {external && <span className="sr-only"> {t('nuevaPestana')}</span>}
+                </a>
+              </li>
+            )
+          })}
+          <li>
+            <a
+              href={`${import.meta.env.BASE_URL}${profile.cv}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link"
+            >
+              {t('cv')}
+              <span className="sr-only"> {t('pdfNuevaPestana')}</span>
+            </a>
+          </li>
+        </ul>
+      </section>
 
-      <IndexGrid items={items} />
+      <Section id="proyectos" title={t('seccionProyectos')}>
+        <ul className="-mx-3 flex flex-col">
+          {projects.map((p) => (
+            <li key={p.slug}>
+              <Link
+                to={rutaProyecto(p.slug)}
+                className="group block rounded-lg px-3 py-3 transition-colors duration-(--dur-state) hover:bg-bg-hover"
+              >
+                <div className="flex items-baseline justify-between gap-4">
+                  <span className="text-title text-ink transition-colors duration-(--dur-state) group-hover:text-accent">
+                    {p.title}
+                  </span>
+                  <span className="shrink-0 font-mono text-meta text-ink-faint tabular-nums">
+                    {formatYear(p.date, lang)}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[0.9375rem] leading-relaxed text-ink-muted">{tr(p.summary)}</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-      {/* Aqui NO va una caja de especificacion. Hubo una —"Perfil / como decido" y
-          "Trayectoria / 4 puestos"— y se quito: no contenia ningun dato. La primera era un
-          resumen vago de la seccion que viene justo debajo y la segunda contaba las filas de
-          una tabla que esta al lado. Existia por simetria con la caja del indice.
+      <Section id="notas" title={t('seccionNotas')}>
+        <ul className="-mx-3 flex flex-col">
+          {notasPorFecha.map((s) => {
+            const { topic, rest } = splitNoteTitle(tr(s.title))
+            const fecha = <time dateTime={s.date}>{formatShortDate(s.date, lang)}</time>
+            const cuerpo = (
+              <>
+                <span className="font-mono text-meta text-ink-faint tabular-nums sm:w-28 sm:shrink-0">
+                  {fecha}
+                </span>
+                <span className="min-w-0">
+                  {topic && <span className="text-ink-faint">{topic} · </span>}
+                  <span className="text-ink transition-colors duration-(--dur-state) group-hover:text-accent">
+                    {rest}
+                  </span>
+                </span>
+              </>
+            )
+            const clases =
+              'group flex flex-col gap-0.5 rounded-lg px-3 py-2.5 sm:flex-row sm:items-baseline sm:gap-4'
+            return (
+              <li key={s.slug}>
+                {s.draft ? (
+                  <div className={`${clases} opacity-60`}>
+                    {cuerpo}
+                    <span className="font-mono text-micro text-ink-faint">{t('borrador')}</span>
+                  </div>
+                ) : (
+                  <Link
+                    to={rutaNota(s.slug)}
+                    className={`${clases} transition-colors duration-(--dur-state) hover:bg-bg-hover`}
+                  >
+                    {cuerpo}
+                  </Link>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      </Section>
 
-          La del indice si se gana el sitio: "9 piezas · 5 proyectos · 4 notas" y el periodo
-          te dicen el tamano y el alcance de lo que vas a mirar ANTES de mirarlo. Ese es el
-          criterio — una caja entra si adelanta algo que el contenido no dice por si solo. */}
-      <h2 className="mt-24 mb-6 text-h1 text-ink" id="perfil">
-        {t('perfil')}
-      </h2>
-
-      <div className="border border-rule bg-rule">
-        <div className="grid gap-px bg-rule lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
-          <div className="flex flex-col gap-4 bg-bg px-5 py-5">
-            {bioParagraphs.map((paragraph: string) => (
-              <p key={paragraph.slice(0, 32)} className="max-w-prose text-body text-ink-muted">
-                {paragraph}
-              </p>
-            ))}
-          </div>
-          <div className="bg-bg px-5 py-5">
-            <p className="spec-tag mb-2 text-ink-muted">{t('trayectoria')}</p>
-            <Ledger />
-          </div>
-        </div>
-      </div>
+      <Section id="experiencia" title={t('experiencia')}>
+        <ul className="flex flex-col gap-y-4">
+          {experience.map((job) => (
+            <li
+              key={`${job.company}-${job.start}`}
+              className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4"
+            >
+              <span className="font-mono text-meta text-ink-faint tabular-nums sm:w-28 sm:shrink-0">
+                {formatYearRange(job.start, job.end, lang)}
+              </span>
+              <span>
+                <span className="text-ink">{job.company}</span>
+                <span className="text-ink-muted"> — {tr(job.role)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <Link to="/about" className="link mt-8 inline-block text-[0.9375rem]">
+          {t('masSobreMi')} →
+        </Link>
+      </Section>
     </>
   )
 }
