@@ -1,0 +1,26 @@
+# Deploy del portfolio en alexanderparco.com (apex). Mismo VPS y misma CLI que el resto
+# de proyectos (github.com/AlexParco/deploy), corrido desde GitHub Actions en cada push a
+# main (.github/workflows/deploy.yml).
+#
+# www: la herramienta rutea UN dominio por servicio, asi que www.alexanderparco.com se
+# resuelve con una Redirect Rule de Cloudflare (www → apex), igual que tracking-peru.com.
+project: portfolio
+
+server:
+  host: ${SERVER_HOST}
+  user: deploy
+  port: ${SERVER_PORT}
+  key: ${SERVER_KEY}
+
+services:
+  web:
+    build: .
+    dockerfile: Dockerfile
+    port: 80
+    domain: alexanderparco.com
+    healthcheck: / # nginx sirve index.html → 200
+    startup_timeout: 30
+
+proxy:
+  ssl: true
+  email: alexparco16@gmail.com

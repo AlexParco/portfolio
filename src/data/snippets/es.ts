@@ -2,28 +2,32 @@ import type { TextosNota } from './textos'
 
 /** Los cuerpos en espanol. Ver la nota de `projects/es.ts` sobre por que van separados.
  *  Titulo y resumen viven en `index.ts`: los pinta el indice, y este modulo solo lo carga
- *  la pagina de detalle. */
+ *  la pagina de detalle.
+ *
+ *  Tono: casual, en primera persona, como se lo contarias a un colega. Frases cortas y
+ *  pocas negritas. Nada de muletillas de texto generado ("ese es todo el argumento", "la
+ *  comparacion honesta", "no es X, es Y" en cada parrafo). */
 export const ES: TextosNota = {
   'nestjs-message-pattern-vs-event-pattern': {
-    content: `## El problema
+    content: `## Me cansé de escribir clientes para probar un handler
 
-Un controlador HTTP en NestJS tiene Swagger. Entras al navegador, ves todos los endpoints, los pruebas ahí mismo, y el contrato está documentado solo.
+Con HTTP en NestJS te acostumbras rápido a Swagger. Abres el navegador, ves todos los endpoints, los pruebas ahí mismo y el contrato se documenta solo.
 
-Un microservicio por **TCP o gRPC no tiene nada de eso**.
+Con un microservicio por TCP o gRPC no tienes nada de eso.
 
-Los patterns son strings u objetos sueltos (\`{ cmd: 'create_order' }\`) repartidos por el código. No hay una página que te diga qué handlers existen. Y para probar **uno solo** tienes que escribirte un cliente entero: instanciar un \`ClientProxy\`, configurar el transporte, construir el payload a mano, suscribirte al Observable. Todo eso para hacer una llamada que en HTTP sería un click.
+Los patterns son strings u objetos sueltos (\`{ cmd: 'create_order' }\`) regados por el código. No hay ninguna página que te diga qué handlers existen. Y si quieres probar uno, te toca armarte un cliente: instanciar un \`ClientProxy\`, configurar el transporte, armar el payload a mano y suscribirte al Observable. Todo eso para algo que en HTTP es un click.
 
-Multiplica eso por cada handler que tocas, y por cada vez que vuelves a un servicio que no abriste en semanas: no hay una página que te diga qué expone, solo el código. Ese es todo el argumento.
+Ahora hazlo con cada handler que tocas. Y cada vez que vuelves a un servicio que no abres hace semanas, lo mismo: lo único que te dice qué expone es el código.
 
-Por eso escribí [nestprobe](https://github.com/AlexParco/nestprobe): descubre los handlers solo, les genera el esquema desde los decoradores y los \`.proto\`, y te deja **ejecutarlos desde el navegador**. Un Swagger para TCP y gRPC.
+Por eso terminé escribiendo [nestprobe](https://github.com/AlexParco/nestprobe). Encuentra los handlers solo, saca el esquema de los decoradores y de los \`.proto\`, y te deja ejecutarlos desde el navegador. Básicamente, un Swagger para TCP y gRPC.
 
-Pero antes de llegar ahí, hay que tener clara la distinción que más bugs silenciosos causa.
+Pero antes conviene tener clarísima una diferencia, porque es la que más bugs silenciosos causa.
 
-## La diferencia real
+## MessagePattern vs EventPattern
 
-\`@MessagePattern\` es **request-response**: el cliente manda un mensaje y **espera** una respuesta. Lo que devuelva el handler viaja de vuelta.
+\`@MessagePattern\` es request-response: el cliente manda un mensaje y se queda esperando la respuesta. Lo que devuelve el handler regresa al cliente.
 
-\`@EventPattern\` es **fire-and-forget**: el cliente publica un evento y sigue con su vida. **Lo que devuelvas se descarta.** No hay canal de vuelta.
+\`@EventPattern\` es fire-and-forget: el cliente publica el evento y sigue en lo suyo. Lo que devuelvas ahí se pierde, no hay por dónde regresar.
 
 \`\`\`ts
 @Controller()
@@ -42,11 +46,11 @@ export class OrdersController {
 }
 \`\`\`
 
-Del lado del cliente la simetría es la misma: \`send()\` para pattern, \`emit()\` para event.
+En el cliente es igual: \`send()\` para los patterns y \`emit()\` para los eventos.
 
-## El gotcha que más cuesta
+## Ojo con send()
 
-\`send()\` devuelve un **Observable frío**. Si nadie se suscribe, **el mensaje no sale**. Llamas al método, no ves ningún error, y el otro servicio nunca recibe nada.
+\`send()\` devuelve un Observable frío. Si nadie se suscribe, el mensaje no sale. Llamas al método, no salta ningún error y el otro servicio nunca se entera.
 
 \`\`\`ts
 // No hace absolutamente nada.
@@ -57,40 +61,38 @@ await firstValueFrom(this.client.send({ cmd: 'create_order' }, dto))
 this.client.send({ cmd: 'create_order' }, dto).subscribe()
 \`\`\`
 
-Es un bug que no rompe nada: no hay excepción, no hay log, no hay stack trace. Simplemente no pasa nada. Y sin una UI donde ver si el handler recibió la llamada, puedes perder horas buscando el fallo en el sitio equivocado.`,
+Lo feo de este bug es que no rompe nada. No hay excepción, no hay log, no hay stack trace: simplemente no pasa nada. Y si no tienes dónde ver si el handler recibió la llamada, te puedes pasar horas buscando el problema donde no está.`,
   },
   'tmux-many-sessions': {
-    content: `## El problema
+    content: `## Ocho sesiones y ni idea de cuál me necesita
 
-tmux te deja tener muchas sesiones a la vez. Eso es justo lo bueno y justo lo que se te va de las manos.
+Lo bueno de tmux es que puedes tener un montón de sesiones abiertas. Lo malo es exactamente lo mismo.
 
-Cuando tienes ocho sesiones abiertas —una por proyecto—, \`prefix + s\` te da una lista de nombres. Pero un nombre no te dice **lo único que necesitas saber en ese momento**: cuál está trabajando, cuál ya terminó, y cuál te está esperando a ti.
+Con ocho sesiones, una por proyecto, \`prefix + s\` te muestra una lista de nombres. Pero el nombre no te dice lo que de verdad quieres saber: cuál está trabajando, cuál ya terminó y cuál está esperando que le respondas.
 
-Con agentes como Claude Code el problema se multiplica, porque una sesión puede estar minutos pensando sola. Acabas entrando a cada una a mano solo para ver en cuál hay algo que hacer.
+Con agentes como Claude Code es peor, porque una sesión se puede quedar varios minutos pensando sola. Terminas entrando a cada una solo para ver si hay algo que hacer.
 
-El síntoma es fácil de reconocer: entras a una sesión, ves que sigue pensando, te sales.
-Entras a la siguiente. A la cuarta ya no te acuerdas de cuál venías.
+Seguro te suena: entras a una, sigue pensando, sales. Entras a la siguiente. Para la cuarta ya no sabes de cuál venías.
 
-Lo que se pierde ahí no está dentro de ninguna sesión, está **en el trayecto entre ellas**, y
-por eso no lo arregla ir más rápido: lo arregla ver el estado de las ocho a la vez.
+El tiempo no se pierde dentro de las sesiones, se pierde saltando entre ellas. Por eso ir más rápido no lo arregla. Lo que lo arregla es ver el estado de todas a la vez.
 
-Por eso escribí [tmux-cc-sessions](https://github.com/AlexParco/tmux-cc-sessions): un popup que las detecta solas (por el proceso \`claude\`), te muestra el estado de cada una —\`working\`, \`ready\`, \`needs you\`— con preview en vivo, y te deja saltar o mandarles un mensaje sin salir de donde estás.
+Así nació [tmux-cc-sessions](https://github.com/AlexParco/tmux-cc-sessions): un popup que detecta las sesiones solo (buscando el proceso \`claude\`), te muestra en qué está cada una (\`working\`, \`ready\`, \`needs you\`) con preview en vivo, y te deja saltar a cualquiera o mandarle un mensaje sin moverte de donde estás.
 
-Pero para que eso tenga sentido, primero hay que tener clara la jerarquía de tmux.
+Antes de eso, vale la pena repasar cómo se organiza tmux.
 
-## Sesión, ventana, panel
+## Sesión, ventana y panel
 
-Los tres niveles parecen intercambiables al principio. No lo son.
+Al principio parecen lo mismo. No lo son.
 
-| Nivel | Para que |
+| Nivel | Para qué |
 |---|---|
-| **Sesión** | Un proyecto. Vive aunque cierres el terminal. |
+| **Sesión** | Un proyecto. Sigue viva aunque cierres la terminal. |
 | **Ventana** | Una tarea dentro del proyecto (servidor, tests, git). |
 | **Panel** | Una división de la pantalla, para ver dos cosas a la vez. |
 
-La regla que me ordenó todo: **una sesión por proyecto, una ventana por tarea.** Los paneles solo cuando de verdad necesitas mirar dos cosas al mismo tiempo.
+A mí lo que me ordenó todo fue esto: una sesión por proyecto y una ventana por tarea. Los paneles, solo cuando de verdad necesitas ver dos cosas al mismo tiempo.
 
-## Lo mínimo que necesitas
+## Lo básico
 
 \`\`\`bash
 tmux new -s api          # crea la sesion "api"
@@ -98,23 +100,23 @@ tmux ls                  # lista las sesiones vivas
 tmux attach -t api       # vuelve a entrar
 \`\`\`
 
-Dentro, todo empieza con el **prefix** (por defecto \`ctrl+b\`):
+Dentro de tmux todo empieza con el prefix (\`ctrl+b\` por defecto):
 
 | Tecla | Qué hace |
 |---|---|
-| \`prefix + d\` | Te sales, pero la sesión **sigue corriendo** |
+| \`prefix + d\` | Te sales, pero la sesión sigue corriendo |
 | \`prefix + c\` | Ventana nueva |
-| \`prefix + ,\` | Renombra la ventana (hazlo: buscar por nombre lo cambia todo) |
+| \`prefix + ,\` | Renombra la ventana (hazlo, buscar por nombre te cambia la vida) |
 | \`prefix + s\` | Árbol de sesiones |
 | \`prefix + %\` / \`"\` | Divide en paneles (vertical / horizontal) |
 
-## Lo que de verdad importa: el detach
+## El detach es lo mejor de tmux
 
-\`prefix + d\` es la razón de ser de tmux. El proceso **no muere** cuando cierras el terminal o se te cae el SSH. Vuelves con \`tmux attach\` y todo sigue exactamente donde lo dejaste.
+\`prefix + d\` es el motivo para usar tmux. Cierras la terminal o se te cae el SSH, y el proceso sigue vivo. Vuelves con \`tmux attach\` y todo está como lo dejaste.
 
-## Saltar rápido
+## Saltar rápido entre sesiones
 
-Cuando la lista crece, \`prefix + s\` se queda corto. Un popup con \`fzf\` para filtrar por nombre ya es otra cosa:
+Cuando ya tienes muchas, \`prefix + s\` se queda corto. Con un popup y \`fzf\` para filtrar por nombre es otra historia:
 
 \`\`\`tmux
 bind-key f display-popup -E "\\
@@ -123,38 +125,35 @@ bind-key f display-popup -E "\\
   | xargs -r tmux switch-client -t"
 \`\`\`
 
-\`display-popup\` necesita **tmux ≥ 3.2**. Este snippet de 5 líneas fue el germen del plugin.`,
+Ojo: \`display-popup\` necesita tmux 3.2 o superior. Estas cinco líneas fueron el inicio del plugin.`,
   },
   'agent-persistent-memory': {
-    content: `## El problema
+    content: `## Explicarle lo mismo al agente todos los días
 
-Un agente como Claude Code empieza **cada sesión en blanco**.
+Claude Code arranca cada sesión desde cero.
 
-Las decisiones que tomaste, las restricciones del proyecto, los gotchas que descubriste a base de golpes: todo eso se muere cuando cierras la sesión. Al día siguiente vuelves a explicar lo mismo. Y si trabajas desde dos máquinas, el contexto que construiste en una no existe en la otra.
+Las decisiones que tomaste, las restricciones del proyecto, esos gotchas que descubriste a la mala: todo se pierde cuando cierras la sesión. Al día siguiente toca explicar lo mismo otra vez. Y si trabajas en dos máquinas, lo que armaste en una no existe en la otra.
 
-Hay herramientas que resuelven esto, pero casi todas lo hacen igual: **una base de datos**. Tu memoria acaba dentro de un binario opaco que no puedes abrir, ni leer, ni versionar, ni arreglar a mano cuando se rompe.
+Hay herramientas que resuelven esto, pero casi todas lo hacen igual: con una base de datos. Tu memoria termina metida en un binario que no puedes abrir, ni leer, ni versionar, ni arreglar a mano si algo se rompe.
 
-Eso me molestaba por dos razones. La primera es práctica: si no puedo leer mi propia memoria con un editor de texto, no la controlo. La segunda es de propiedad: mi contexto de trabajo es mío, y no tiene por qué pasar por el servidor de nadie.
+A mí eso no me cuadraba. Primero, si no puedo leer mi propia memoria con un editor, no la controlo. Y segundo, mi contexto de trabajo es mío, no tiene por qué pasar por el servidor de nadie.
 
-Lo que empuja a construir algo así no es la sesión que se pierde, es la **segunda máquina**.
-Mientras trabajas en una sola, reexplicar el contexto es una molestia y se aguanta. En cuanto
-hay dos, el agente de una sabe cosas que el de la otra ignora, las dos versiones divergen, y
-ya no es una molestia: es que no tienes una memoria, tienes dos que no se hablan.
+Lo que al final me hizo construirlo fue la segunda máquina. Con una sola, repetir el contexto es molesto pero se aguanta. Con dos, cada agente sabe cosas que el otro no, las versiones se van separando y al final no tienes una memoria: tienes dos que no se hablan.
 
-## La decisión de diseño
+## Archivos de texto y git, nada más
 
-En [mnemo](https://github.com/AlexParco/mnemo) la memoria son **archivos \`.md\` versionados en git**. Nada más.
+En [mnemo](https://github.com/AlexParco/mnemo) la memoria son archivos \`.md\` versionados con git. Eso es todo.
 
-- Los puedes **leer** con cualquier editor.
-- Los puedes **arreglar** a mano cuando algo sale mal.
-- Tienen **historial** gratis, porque es git.
-- Se sincronizan **P2P entre tus máquinas** (Syncthing). Sin servidor.
+- Los lees con cualquier editor.
+- Los arreglas a mano cuando algo sale mal.
+- Tienes historial gratis, porque es git.
+- Se sincronizan P2P entre tus máquinas con Syncthing, sin servidor.
 
-La comparación honesta: es como [engram](https://github.com/Gentleman-Programming/engram), pero minimalista y sin base de datos.
+Si lo comparas con [engram](https://github.com/Gentleman-Programming/engram), la idea va por ahí, pero más minimalista y sin base de datos.
 
-## Etiquetas, no carpetas
+## Etiquetas en vez de carpetas
 
-La otra decisión que importa: una nota **no vive en una carpeta**, lleva etiquetas.
+La otra decisión importante: una nota no vive en una carpeta, lleva etiquetas.
 
 \`\`\`md
 ---
@@ -166,24 +165,24 @@ El deploy usa Traefik porque necesitabamos SSL automatico sin
 mantener certificados a mano.
 \`\`\`
 
-Eso significa que una nota puede pertenecer a **varios proyectos a la vez**, que es lo que pasa en la vida real: una decisión de infraestructura afecta a tres proyectos, y meterla en una sola carpeta te obliga a duplicarla o a elegir mal.
+Así una nota puede ser de varios proyectos a la vez, que es lo que pasa en la vida real. Una decisión de infraestructura afecta a tres proyectos y, si la metes en una sola carpeta, o la duplicas o la dejas donde no va.
 
-Cargar un proyecto es simplemente **filtrar las notas que lo incluyen**.
+Cargar un proyecto es solo filtrar las notas que lo tienen.
 
-## La separación que lo hace compartible
+## Lo que se comparte y lo que no
 
-El **engine** —los comandos y el instalador— vive en GitHub y es de todos. El **store** —tus notas— vive solo en tus máquinas.
+El engine (los comandos y el instalador) está en GitHub y lo puede usar cualquiera. El store, o sea tus notas, vive solo en tus máquinas.
 
-Cada persona instala el mismo engine y tiene su propio store privado. Tu contexto no se mezcla con el de nadie, y nada de lo que escribes sube nunca a GitHub.`,
+Todos instalan el mismo engine y cada uno tiene su store privado. Tu contexto no se mezcla con el de nadie y nada de lo que escribes termina en GitHub.`,
   },
   'expo-eas-apk-build': {
-    content: `## El problema
+    content: `## Esperé la build y no pude instalarla
 
-Corres \`eas build\`, esperas la cola, descargas el archivo... y no lo puedes instalar en el teléfono.
+Corres \`eas build\`, esperas la cola, descargas el archivo... y el teléfono no lo quiere instalar.
 
-EAS produce un **\`.aab\`** (Android App Bundle) por defecto. Un \`.aab\` **no es una app instalable**: es un formato de publicación que se le entrega a Google Play, y es Play quien genera desde el los APK concretos para cada dispositivo.
+Resulta que EAS genera un \`.aab\` (Android App Bundle) por defecto. Y un \`.aab\` no es una app que puedas instalar: es el formato que le subes a Google Play, y es Play el que después arma los APK para cada dispositivo.
 
-Así que si lo que querías era pasarle la build a un tester, subirla a un dispositivo o mandársela a alguien, el archivo que acabas de esperar **no te sirve**. Y el error no te dice eso: simplemente el teléfono se niega a instalarlo.
+O sea, si querías pasarle la build a un tester o instalarla en tu teléfono, el archivo que acabas de esperar no te sirve. Y nadie te avisa: el teléfono simplemente no lo instala.
 
 | | \`.aab\` | \`.apk\` |
 |---|---|---|
@@ -191,9 +190,9 @@ Así que si lo que querías era pasarle la build a un tester, subirla a un dispo
 | Se instala en un móvil | No | Sí |
 | Lo genera EAS por defecto | Sí | No |
 
-## Cómo pedir un APK
+## Cómo pedirle un APK
 
-Enlaza el proyecto y autentícate:
+Primero enlaza el proyecto e inicia sesión:
 
 \`\`\`bash
 npm install --global eas-cli
@@ -202,7 +201,7 @@ eas init --id <project-id>
 eas build:configure
 \`\`\`
 
-\`build:configure\` genera \`eas.json\`. Ahí declaras un perfil con \`buildType: "apk"\`:
+\`build:configure\` te crea un \`eas.json\`. Ahí agregas un perfil con \`buildType: "apk"\`:
 
 \`\`\`json
 {
@@ -216,20 +215,20 @@ eas build:configure
 }
 \`\`\`
 
-Y buildeas **con ese perfil**:
+Y haces la build con ese perfil:
 
 \`\`\`bash
 eas build --profile preview --platform android
 \`\`\`
 
-## Los tropiezos
+## Donde uno se tropieza
 
-**Te olvidas del \`--profile\`.** Sin él, EAS usa \`production\`, que sigue dando \`.aab\`. El síntoma es idéntico al del principio, así que es fácil pensar que la configuración no se aplicó y ponerte a depurar el \`eas.json\` cuando el \`eas.json\` estaba bien.
+**Olvidar el \`--profile\`.** Sin eso, EAS usa \`production\`, que te sigue dando \`.aab\`. Como el síntoma es el mismo del inicio, es fácil pensar que la config no se aplicó y ponerte a revisar el \`eas.json\` cuando estaba bien.
 
-**El perfil se llama como tú quieras.** \`preview\` no es una palabra mágica: es solo la clave que pusiste en el JSON. Lo único que importa es que coincida con lo que pasas a \`--profile\`.
+**El nombre del perfil lo eliges tú.** \`preview\` no tiene nada de especial, es solo la clave que pusiste en el JSON. Lo único que importa es que coincida con lo que pasas en \`--profile\`.
 
-**La firma no es la de Play.** EAS genera credenciales propias para el APK. Sirve para repartir builds de prueba, pero **no es la misma firma** con la que Play firma tu app en producción.
+**La firma no es la de Play.** EAS crea sus propias credenciales para el APK. Te sirven para repartir builds de prueba, pero no es la misma firma con la que Play firma tu app en producción.
 
-**Buildear en local.** \`eas build --local\` compila en tu máquina y te ahorra la cola, pero necesita el SDK de Android instalado.`,
+**Compilar en local.** \`eas build --local\` hace la build en tu máquina y te ahorras la cola, pero necesitas tener instalado el SDK de Android.`,
   },
 }

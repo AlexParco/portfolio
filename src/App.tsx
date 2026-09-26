@@ -1,7 +1,9 @@
-import { Suspense, lazy, useEffect } from 'react'
+import { type ComponentType, Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
+import { Ball } from './components/Ball'
+import { PageSkeleton } from './components/PageSkeleton'
 import { Home } from './pages/Home'
 import { NotFound } from './pages/NotFound'
 import { useLang } from './i18n/useLang'
@@ -9,14 +11,54 @@ import { CLAVE_IDIOMA } from './i18n/lang'
 import { profile } from './data/profile'
 
 // Las paginas de detalle arrastran react-markdown (~156kB). Solo el home entra en el
-// bundle inicial; el detalle se carga al navegar.
-const ProjectDetail = lazy(() =>
-  import('./pages/ProjectDetail').then((m) => ({ default: m.ProjectDetail })),
-)
-const SnippetDetail = lazy(() =>
-  import('./pages/SnippetDetail').then((m) => ({ default: m.SnippetDetail })),
-)
-const About = lazy(() => import('./pages/About').then((m) => ({ default: m.About })))
+// bundle inicial; el resto se carga en diferido y se PRECARGA en segundo plano.
+//
+// Por que no basta `React.lazy` a secas: aunque el modulo ya este descargado, `lazy`
+// suspende al menos un microtick, y en cuanto React 19 muestra un fallback lo mantiene
+// un minimo de ~300 ms para no parpadear. Resultado medido: skeleton y 400 ms de espera
+// con el codigo ya en el navegador. Asi que, si la pagina ya esta cargada, se pinta el
+// componente directamente y `lazy` solo entra cuando de verdad hay que esperar.
+function diferida<M, P extends object>(
+  cargar: () => Promise<M>,
+  elegir: (m: M) => ComponentType<P>,
+): { Pagina: ComponentType<P>; precargar: () => Promise<unknown> } {
+  let lista: ComponentType<P> | null = null
+  const precargar = () =>
+    cargar().then((m) => {
+      lista = elegir(m)
+      return m
+    })
+  const Perezosa = lazy(() => precargar().then((m) => ({ default: elegir(m) })))
+  function Pagina(props: P): React.JSX.Element {
+    const C = lista
+    return C ? <C {...props} /> : <Perezosa {...props} />
+  }
+  return { Pagina, precargar }
+}
+
+const proyecto = diferida(() => import('./pages/ProjectDetail'), (m) => m.ProjectDetail)
+const nota = diferida(() => import('./pages/SnippetDetail'), (m) => m.SnippetDetail)
+const about = diferida(() => import('./pages/About'), (m) => m.About)
+const ProjectDetail = proyecto.Pagina
+const SnippetDetail = nota.Pagina
+const About = about.Pagina
+
+/** Precarga las paginas diferidas cuando el navegador no tiene nada mejor que hacer. */
+function usePrecarga(): void {
+  useEffect(() => {
+    const precargar = () => {
+      for (const d of [proyecto, nota, about]) void d.precargar().catch(() => {})
+    }
+    // Safari no tiene requestIdleCallback.
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(precargar, { timeout: 2000 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const id = setTimeout(precargar, 1000)
+    return () => clearTimeout(id)
+  }, [])
+}
+
 // Banco de pruebas para elegir el diseno del pez. No esta enlazado desde ninguna parte;
 // se llega escribiendo /lab. Va en diferido para que no pese en el bundle inicial, y la
 // carpeta src/lab/ se borra entera cuando se decida.
@@ -84,6 +126,7 @@ function ScrollToTop(): null {
 function Shell(): React.JSX.Element {
   const { pathname } = useLocation()
   const { t } = useLang()
+  usePrecarga()
 
   return (
     <>
@@ -96,11 +139,11 @@ function Shell(): React.JSX.Element {
         {t('saltar')}
       </a>
 
-      <div className="mx-auto max-w-page px-5 sm:px-6">
-        <Header />
+      <div className="relative mx-auto max-w-page px-5 sm:px-6">
+        <Header overlay={pathname === '/'} />
         {/* tabIndex=-1: sin esto el skip-link cambia el hash pero no mueve el foco en Safari. */}
         <main id="main" key={pathname} tabIndex={-1} className="enter outline-none">
-          <Suspense fallback={null}>
+          <Suspense fallback={<PageSkeleton />}>
             {/* Una sola URL por pieza, con los segmentos SIEMPRE en ingles aunque la
                 pagina se lea en castellano. El idioma no entra en la ruta. */}
             <Routes>
@@ -115,13 +158,18 @@ function Shell(): React.JSX.Element {
         </main>
         <Footer />
       </div>
+      <Ball />
     </>
   )
 }
 
 export function App(): React.JSX.Element {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    // useTransitions={false}: React Router 7 navega dentro de startTransition por defecto,
+    // y en una transicion React se queda en la pagina VIEJA, sin dar senal, hasta que llega
+    // el codigo de la nueva (medido: ~1 s en 4G sin precarga). Sin transicion, el skeleton
+    // aparece en cuanto hay que esperar; y si la pagina ya esta precargada no hay espera.
+    <BrowserRouter basename={import.meta.env.BASE_URL} useTransitions={false}>
       <Shell />
     </BrowserRouter>
   )

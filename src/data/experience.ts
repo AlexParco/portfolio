@@ -13,8 +13,8 @@ export const experience: Job[] = [
     role: { es: 'Backend · diseño y operación', en: 'Backend · design and operations' },
     company: 'Proyectos propios',
     summary: {
-      es: 'Dos APIs REST públicas de logística para el mercado peruano, diseñadas y operadas de extremo a extremo.',
-      en: 'Two public REST logistics APIs for the Peruvian market, designed and operated end to end.',
+      es: 'En paralelo. Dos APIs REST públicas de logística para el mercado peruano, diseñadas y operadas de extremo a extremo.',
+      en: 'In parallel. Two public REST logistics APIs for the Peruvian market, designed and operated end to end.',
     },
     highlights: {
       es: [
@@ -51,7 +51,7 @@ export const experience: Job[] = [
       ],
     },
     start: '2023-09',
-    end: '2025-09',
+    end: null,
   },
   {
     role: { es: 'Desarrollador Frontend', en: 'Frontend Developer' },

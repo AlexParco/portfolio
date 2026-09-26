@@ -19,6 +19,7 @@ export function ArticleNav({
 
   const card = (target: NavTarget, label: string, align: 'left' | 'right') => (
     <Link
+      data-ball
       to={target.href}
       className={`group flex flex-col gap-1 rounded-lg border border-rule px-4 py-3 transition-colors duration-(--dur-state) hover:border-ink-faint ${
         align === 'right' ? 'sm:col-start-2 sm:text-right' : ''

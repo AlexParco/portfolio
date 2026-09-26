@@ -1,23 +1,28 @@
 @import "tailwindcss";
 
-/* Dark mode por atributo en <html>. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
-
 @theme {
   /* ─── Color ────────────────────────────────────────────────────────────
-     Minimalista: papel, tinta y UN acento. El acento solo aparece en lo que se
-     puede pulsar (hover de enlaces, foco) y en la seleccion; nunca de adorno.
-     El tema base es el CLARO; el oscuro redefine los mismos tokens abajo. */
-  --color-bg:        oklch(0.988 0.002 90);    /* papel                        */
-  --color-surface:   oklch(0.965 0.003 90);    /* codigo, diagramas            */
-  --color-bg-hover:  oklch(0.950 0.003 90);
-  --color-ink:       oklch(0.220 0.005 90);    /* texto principal              */
-  --color-ink-muted: oklch(0.500 0.006 90);    /* secundario  (AA sobre bg)    */
-  --color-ink-faint: oklch(0.640 0.005 90);    /* fechas, metadato             */
-  --color-rule:      oklch(0.915 0.004 90);    /* filetes                      */
-  --color-accent:    oklch(0.560 0.150 45);    /* terracota                    */
-  --color-accent-dim: oklch(0.500 0.006 90);
+     Sacada de hero.jpg, y SOLO oscura: la foto es un paisaje en penumbra y el sitio
+     es su continuacion. Hubo un tema claro y se quito: la foto disolviendose hacia
+     papel crema dejaba una franja gris sucia, y sin la foto el claro no tenia nada
+     que ver con la portada. El verde casi negro es la sombra del bosque, el texto
+     crema y el acento melocoton es la franja de luz del horizonte. El acento solo
+     marca lo que se puede pulsar. */
+  --color-bg:        oklch(0.165 0.012 155);   /* sombra del bosque            */
+  --color-surface:   oklch(0.205 0.014 155);   /* codigo, diagramas            */
+  --color-bg-hover:  oklch(0.215 0.015 155);
+  --color-ink:       oklch(0.930 0.022 85);    /* crema                        */
+  --color-ink-muted: oklch(0.740 0.018 100);
+  --color-ink-faint: oklch(0.590 0.016 120);   /* fechas, metadato             */
+  --color-rule:      oklch(0.275 0.016 155);
+  --color-accent:    oklch(0.820 0.085 60);    /* la luz del horizonte         */
+  --color-accent-dim: oklch(0.740 0.018 100);
   --color-haze:      oklch(0.700 0 0);
+
+  /* El texto que va SOBRE la foto. Hoy coincide casi con `ink`, pero es otro papel:
+     este depende de la foto, no del fondo de la pagina. */
+  --color-cream:     oklch(0.955 0.022 85);
+  --color-cream-dim: oklch(0.955 0.022 85 / 0.72);
 
   /* ─── Tipografia ───────────────────────────────────────────────────────
      sans para leer, mono solo para lo que se escanea (fechas, tags, codigo). */
@@ -61,20 +66,7 @@
   --dur-image: 200ms;
 }
 
-[data-theme="dark"] {
-  --color-bg:        oklch(0.170 0.003 90);
-  --color-surface:   oklch(0.205 0.003 90);
-  --color-bg-hover:  oklch(0.225 0.003 90);
-  --color-ink:       oklch(0.930 0.006 90);
-  --color-ink-muted: oklch(0.720 0.006 90);
-  --color-ink-faint: oklch(0.580 0.005 90);
-  --color-rule:      oklch(0.280 0.004 90);
-  --color-accent:    oklch(0.740 0.130 50);
-  --color-accent-dim: oklch(0.720 0.006 90);
-}
-
-:root { color-scheme: light; }
-[data-theme="dark"] { color-scheme: dark; }
+:root { color-scheme: dark; }
 
 html {
   scroll-behavior: smooth;
@@ -82,6 +74,10 @@ html {
 }
 
 body {
+  /* El hero rompe la columna a todo el ancho con 50vw, que incluye la barra de scroll:
+     sin esto habria unos pixeles de scroll horizontal. `clip` y no `hidden` para no
+     crear un contenedor de scroll que rompa los `sticky`. */
+  overflow-x: clip;
   background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
@@ -118,6 +114,111 @@ a {
 ::selection {
   background: color-mix(in oklab, var(--color-accent) 25%, transparent);
   color: var(--color-ink);
+}
+
+/* ─── Hero ────────────────────────────────────────────────────────────────
+   La foto se disuelve por abajo con una MASCARA, no con un degradado al color de
+   fondo: asi se funde sin repetir el valor de --color-bg. El velo oscuro va dentro
+   de la misma mascara y solo existe para el texto crema: arriba (navegacion sobre
+   el cielo) y en la franja del nombre. */
+.hero-fade {
+  -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 80%, transparent 100%);
+}
+.hero-veil {
+  background:
+    linear-gradient(to bottom, oklch(0.12 0.01 155 / 0.55) 0%, transparent 24%),
+    linear-gradient(to top, oklch(0.12 0.01 155 / 0.65) 18%, transparent 55%);
+}
+@keyframes hero-in {
+  from { opacity: 0; transform: scale(1.04); }
+  to   { opacity: 1; transform: none; }
+}
+.hero-img { animation: hero-in 1.2s var(--ease-out) both; }
+
+/* ─── El sol (Ball.tsx) ────────────────────────────────────────────────────
+   La luz del horizonte hecha objeto: un circulo con su propio resplandor. Va
+   fijo al viewport y lo mueve Ball.tsx con `transform`; aqui solo su aspecto. */
+.ball {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at 36% 34%,
+    oklch(0.96 0.045 85) 0%,
+    var(--color-accent) 55%,
+    oklch(0.72 0.12 48) 100%
+  );
+  box-shadow:
+    0 0 18px 4px oklch(0.82 0.085 60 / 0.45),
+    0 0 60px 18px oklch(0.82 0.085 60 / 0.18);
+  cursor: grab;
+  touch-action: none; /* solo el sol: el resto de la pagina sigue haciendo scroll */
+  will-change: transform;
+  visibility: hidden;
+}
+.ball:active { cursor: grabbing; }
+.ball[data-docked] { animation: ball-glow 3.2s ease-in-out infinite; }
+@keyframes ball-glow {
+  0%, 100% { box-shadow: 0 0 18px 4px oklch(0.82 0.085 60 / 0.40), 0 0 60px 18px oklch(0.82 0.085 60 / 0.14); }
+  50%      { box-shadow: 0 0 24px 7px oklch(0.82 0.085 60 / 0.55), 0 0 80px 26px oklch(0.82 0.085 60 / 0.22); }
+}
+
+/* Lo que el sol toca: se ilumina con su luz y da un respingo en la direccion del golpe. */
+.ball-hit { animation: ball-hit 900ms var(--ease-out); }
+@keyframes ball-hit {
+  0%   { background-color: oklch(0.82 0.085 60 / 0.16); transform: translateX(var(--kick, 4px)); }
+  25%  { transform: translateX(calc(var(--kick, 4px) * -0.5)); }
+  50%  { transform: none; }
+  100% { background-color: transparent; }
+}
+
+/* ─── El nombre del hero (HeroName.tsx) ──────────────────────────────────
+   Cada letra recibe de JS tres variables: --luz (0..1, cercania del sol), y --baja
+   y --rot (cuanto la hundio e inclino un golpe del sol). Aqui solo se traducen a aspecto:
+     - color: crema, que se calienta hacia el melocoton con la luz y se apaga
+       hacia un gris verdoso cuando el sol esta lejos;
+     - un halo calido que crece con la luz (sin sombra proyectada: sobre la foto
+       ensuciaba las letras);
+     - hundimiento y giro desde la base cuando el sol la golpea. */
+.nombre-letra {
+  --luz: 0.5;
+  --rot: 0deg;
+  --baja: 0px;
+  display: inline-block;
+  transform: translateY(var(--baja)) rotate(var(--rot));
+  transform-origin: 50% 88%;
+  color: color-mix(
+    in oklch,
+    oklch(0.88 0.095 62) calc(var(--luz) * 55%),
+    color-mix(in oklch, oklch(0.66 0.02 110) calc((1 - var(--luz)) * 38%), var(--color-cream))
+  );
+  text-shadow: 0 0 calc(var(--luz) * 26px) oklch(0.82 0.085 60 / calc(var(--luz) * 0.55));
+  will-change: transform;
+}
+
+/* ─── Skeleton de carga ───────────────────────────────────────────────────
+   Entra con retraso: si el contenido llega en menos de 150 ms (lo normal con la
+   precarga) no se ve nunca, y no hay parpadeo. El brillo recorre las barras de
+   izquierda a derecha, como la luz del horizonte. */
+.skeleton { animation: enter var(--dur-enter) var(--ease-out) 150ms both; }
+.skeleton-bar {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    oklch(0.25 0.018 140) 45%,
+    var(--color-surface) 90%
+  );
+  background-size: 250% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to   { background-position: -150% 0; }
 }
 
 /* Entrada de ruta: un fundido corto, nada mas. */

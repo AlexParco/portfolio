@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import { Link } from 'react-router-dom'
+import { Hero } from '../components/Hero'
 import { Section } from '../components/Section'
 import { profile } from '../data/profile'
 import { projects } from '../data/projects'
@@ -19,14 +20,12 @@ export function Home(): JSX.Element {
 
   return (
     <>
-      <section aria-labelledby="hola">
-        <h1 id="hola" className="text-h1 text-ink">
-          {profile.name}
-        </h1>
-        <p className="mt-2 text-ink-muted">
-          {tr(profile.role)} · {tr(profile.location)}
-        </p>
-        <p className="mt-6 text-lead text-ink-muted">{tr(profile.intro)}</p>
+      <Hero />
+
+      {/* -mt: la entradilla sube hasta la cola de la mascara del hero, donde la foto ya es
+          casi transparente, para que la foto y el texto se lean como una sola pieza. */}
+      <section aria-label={t('sobreMi')} className="relative -mt-6">
+        <p className="text-lead text-ink-muted">{tr(profile.intro)}</p>
 
         <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[0.9375rem]">
           {profile.socials.map((social) => {
@@ -63,6 +62,7 @@ export function Home(): JSX.Element {
           {projects.map((p) => (
             <li key={p.slug}>
               <Link
+                data-ball
                 to={rutaProyecto(p.slug)}
                 className="group block rounded-lg px-3 py-3 transition-colors duration-(--dur-state) hover:bg-bg-hover"
               >
@@ -110,6 +110,7 @@ export function Home(): JSX.Element {
                   </div>
                 ) : (
                   <Link
+                    data-ball
                     to={rutaNota(s.slug)}
                     className={`${clases} transition-colors duration-(--dur-state) hover:bg-bg-hover`}
                   >
@@ -123,11 +124,12 @@ export function Home(): JSX.Element {
       </Section>
 
       <Section id="experiencia" title={t('experiencia')}>
-        <ul className="flex flex-col gap-y-4">
+        <ul className="flex flex-col gap-y-2">
           {experience.map((job) => (
             <li
               key={`${job.company}-${job.start}`}
-              className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4"
+              data-ball
+              className="-mx-3 flex flex-col gap-0.5 rounded-lg px-3 py-1 sm:flex-row sm:items-baseline sm:gap-4"
             >
               <span className="font-mono text-meta text-ink-faint tabular-nums sm:w-28 sm:shrink-0">
                 {formatYearRange(job.start, job.end, lang)}

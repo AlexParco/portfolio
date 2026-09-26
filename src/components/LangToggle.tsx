@@ -10,7 +10,7 @@ import { type Lang } from '../i18n/lang'
  * castellano) y el nombre accesible va completo y en ese idioma, con su `lang`, para que
  * un lector de pantalla lo pronuncie con la fonetica correcta.
  */
-export function LangToggle(): React.JSX.Element {
+export function LangToggle({ overlay = false }: { overlay?: boolean }): React.JSX.Element {
   const { lang, cambiar } = useLang()
   const { i18n } = useTranslation('ui')
   const otro: Lang = lang === 'es' ? 'en' : 'es'
@@ -23,7 +23,9 @@ export function LangToggle(): React.JSX.Element {
       lang={otro}
       aria-label={enDestino('verEnIdioma')}
       title={enDestino('verEnIdioma')}
-      className="inline-flex h-9 min-w-9 items-center justify-center rounded-md px-1.5 font-mono text-meta text-ink-muted uppercase transition-colors duration-(--dur-state) hover:bg-bg-hover hover:text-ink"
+      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-md px-1.5 font-mono text-meta uppercase transition-colors duration-(--dur-state) ${
+        overlay ? 'text-cream-dim hover:bg-cream/10 hover:text-cream' : 'text-ink-muted hover:bg-bg-hover hover:text-ink'
+      }`}
     >
       {otro}
     </button>

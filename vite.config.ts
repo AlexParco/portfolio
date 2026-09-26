@@ -4,10 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  // El sitio vive en la RAIZ del dominio. Ojo: esto tiene que coincidir con donde se
-  // sirve de verdad. En GitHub Pages la raiz solo existe si el repo se llama
-  // `alexparco.github.io` o si hay un dominio propio con su CNAME; en un repo de
-  // proyecto normal la URL es `/<repo>/` y con `base: '/'` los assets apuntarian a
-  // un sitio donde no estan.
+  // El sitio vive en la RAIZ de alexanderparco.com, servido por nginx en el VPS
+  // (Dockerfile + deploy.yml). Si algun dia se sirviera bajo un subdirectorio, esto
+  // tiene que cambiar a esa ruta o los assets apuntarian a donde no estan.
   base: '/',
 })
