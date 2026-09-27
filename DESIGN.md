@@ -1,1387 +1,551 @@
-# SPEC DE DISEÑO DEFINITIVO — Portfolio Alexander Parco Flores
+# DISEÑO — Portfolio de Alexander Parco Flores
 
-**Versión 6.6 · fuente única de verdad · "Hoja de especificación"**
+Este documento describe el **diseño actual** del sitio (`alexanderparco.com`): un portfolio minimalista tipo blog, en una sola columna, modo solo oscuro, con una portada de foto y un "sol" con el que se puede jugar.
 
----
+> **Reescritura completa (septiembre 2026).** Este documento reemplaza por entero al spec anterior, que describía un sistema visual distinto —una "hoja de especificación" a dos paneles, monocroma, con el idioma viviendo en la URL—. Todo aquello quedó derogado: no busques aquí `SpecRow`, dos paneles, ni rutas con `/en`. El código es la fuente de verdad; este documento lo explica, sección por sección, apoyándose en los archivos reales.
 
-## 0. La v6.6 SUSTITUYE al sistema visual Y ESTRUCTURAL de este documento (agosto 2026)
+## La idea en una frase
 
-Las secciones **2 (tokens)** y **3 (tipografía)** de abajo están **derogadas**. La tesis de
-§1, la retícula de §4, la anatomía de §5, los estados de §6 y la accesibilidad de §8 siguen
-vigentes.
+Un paisaje en penumbra (`hero.jpg`) como portada, y el sitio entero como su continuación: paleta sacada de la foto, texto crema sobre verde de bosque, y un único acento melocotón —la luz del horizonte— que solo marca lo que se puede pulsar. Encima, un sol que se agarra, se lanza y choca con las letras del nombre. Debajo, contenido que se lee como un blog: proyectos y notas, cada uno con su **registro de decisión** (problema, elección y el precio que se pagó).
 
-### Para quién está diseñado
+## Mapa del documento
 
-Para alguien que revisa treinta perfiles en una tarde. **Barre, no lee.** Decide en unos
-segundos si sigue. Todo lo de abajo sale de ahí, y cuando una preferencia estética ha
-chocado con esa persona, ha ganado esa persona.
+- **§1 — Sistema visual:** tokens de color y tipografía, el modo solo oscuro, la paleta derivada de la foto.
+- **§2 — Estructura, rutas y rendimiento:** la columna única, el shell, las páginas, y la precarga + skeleton que hacen que navegar sea instantáneo.
+- **§3 — La portada:** el hero, el sol lanzable (física, colisiones, el "gol") y el nombre que se ilumina y choca con el sol.
+- **§4 — Contenido, datos e i18n:** el modelo de datos, el registro de decisión, el bilingüe que vive en el navegador, y las páginas de detalle tipo post.
+- **§5 — Build y despliegue:** de Vite a nginx en Docker, el Traefik compartido del VPS, y Cloudflare por delante para ocultar la IP.
 
-### Lo que es ahora
+## Stack
 
-| | v1 | v2.1 |
+React 19 · TypeScript · Vite · Tailwind CSS v4 · react-router-dom 7 · react-i18next · react-markdown. Se despliega como estático (nginx en Docker) sobre un VPS propio, con CI en GitHub Actions (push a `main` → deploy).
+
+
+## 1. Sistema visual — tokens, tema y tipografía
+
+Todo el sistema visual vive en `src/styles/theme.css`, dentro del bloque `@theme` de Tailwind v4 (el archivo abre con `@import "tailwindcss";`). No hay archivo de configuración JS: los tokens son variables CSS y Tailwind genera las utilidades a partir de ellos.
+
+### 1.1 Modo solo oscuro (paleta única)
+
+El sitio tiene **una sola paleta y es oscura**. No hay tema claro ni conmutador. El comentario en `theme.css` (líneas 4-10) lo deja explícito: hubo un tema claro y se quitó.
+
+El porqué está documentado en el propio código: la portada es una foto de un paisaje en penumbra (`hero.jpg`) y el sitio es su continuación. Con tema claro, la foto disolviéndose hacia el papel crema dejaba "una franja gris sucia" donde la imagen se fundía con el fondo; y sin la foto, el modo claro no tenía nada que ver con la portada. Así que la decisión fue comprometerse con lo oscuro y hacer que todo el color naciera de la foto.
+
+La declaración de modo oscuro es doble y deliberada:
+
+- `:root { color-scheme: dark; }` en CSS (línea 69), para que los controles nativos y las barras de scroll salgan oscuros.
+- En `index.html`, dos metas fijas: `<meta name="color-scheme" content="dark" />` y `<meta name="theme-color" content="#0b120d" />` (líneas 17-18). Ese `theme-color` (`#0b120d`, un verde casi negro) es el que pinta la barra del navegador en móvil, alineado con `--color-bg`.
+
+**Trampa:** el `<body>` conserva `transition: background-color var(--dur-state) linear;` (línea 88), una transición de color de fondo que solo tiene sentido si hubiera un cambio de tema. Con paleta única no hace nada visible; es residuo del conmutador retirado.
+
+### 1.2 La paleta — tokens de color
+
+Todos los colores están en `oklch()` y salen de `hero.jpg` (colinas verdes, cielo de tormenta, franja de luz melocotón en el horizonte). El hilo conductor es el matiz verde (~155) para las superficies —"la sombra del bosque"— y el melocotón cálido para el acento —"la luz del horizonte"—.
+
+Fondos y superficies:
+
+| Token | Valor oklch | Papel |
 |---|---|---|
-| Familias | Geist + JetBrains Mono, repartidas por "quién escribió el dato" | Geist + JetBrains Mono, repartidas por **qué se hace con el texto** |
-| Paleta | inventada (gris azulado + ocre) | **derivada de un paisaje pintado** (ver abajo) |
-| Fondo | `oklch(.18 .008 262)` gris azulado | oscuro: **`#040806`, casi negro**; claro: `#F2ECDC` crema |
-| Acento | ocre `#98511F` | **ninguno.** `--color-accent` == `--color-ink` |
-| Atmósfera | ninguna | **dos veladuras + grano fino**, en `body::before/::after` |
-| Etiqueta de canaleta | 11px UPPERCASE a la izquierda | **13px mono, caja de frase, alineada a la DERECHA** |
-| Canaleta / contenedor | 7.5rem / 880px | **11rem / 1040px** |
-| Separación de secciones | `border-top` + 40/56px | **sin regla**, 36/48px de aire |
-| Hero | nombre + rol + redes | nombre + rol + **titular** + **CV en PDF** + enlaces |
-| Orden de proyectos | herramientas OSS primero | **producción primero**, herramientas después |
-| Tema por defecto | el del sistema | **oscuro** |
-| Nav | 6 anclas | **3 anclas**: perfil · proyectos · notas |
-| Escala | h1 32→52px | **h1 40→84px**; el lead BAJA a 16→18px |
+| `--color-bg` | `oklch(0.165 0.012 155)` | Fondo de página: la sombra del bosque, verde casi negro. |
+| `--color-surface` | `oklch(0.205 0.014 155)` | Superficie elevada: código, diagramas. |
+| `--color-bg-hover` | `oklch(0.215 0.015 155)` | Estado hover sobre fondos. |
+| `--color-rule` | `oklch(0.275 0.016 155)` | Líneas, reglas y subrayados en reposo. |
 
-### Una hoja de especificación
+Texto (tinta), en escala de contraste decreciente y con el matiz derivando de crema (85) a verdoso (120):
 
-La v5 partía la pantalla en dos paneles con la identidad fija a la izquierda. La referencia
-actual es una **ficha técnica de producto**: una sola columna que se lee de arriba abajo, con
-cajas de borde visible, rótulos diminutos en versalita y el contenido en rejilla de celdas.
-Un panel lateral pegado la convertía en otra cosa.
-
-| | v5 | v6 |
+| Token | Valor oklch | Papel |
 |---|---|---|
-| Disposición | dos paneles, rail fijo | **una columna**, cabecera + cuerpo + pie |
-| Separadores | filete bajo el rótulo | **cajas con borde**, rejilla de 1px |
-| Rótulos | mono 12px caja de frase | **versalita 10px, tracking `.12em`** (`.spec-tag`) |
-| El índice | tabla de filas | **rejilla de 9 celdas numeradas** |
-| Titular | frase larga a 15–17px | **corto, a cuerpo de display, peso 600** |
+| `--color-ink` | `oklch(0.930 0.022 85)` | Texto principal, crema. Es el `color` por defecto del `body`. |
+| `--color-ink-muted` | `oklch(0.740 0.018 100)` | Texto secundario atenuado. |
+| `--color-ink-faint` | `oklch(0.590 0.016 120)` | Metadatos, fechas: lo más tenue. |
 
-**El borde de 1px no se pinta con `border` en cada celda** — eso da líneas dobles donde dos
-celdas se tocan. Se pinta con `gap: 1px` sobre un fondo del color del filete: los huecos de
-la rejilla *son* las líneas. Una sola línea entre celdas, siempre, sin importar cuántas haya
-ni cómo envuelvan.
+Acento y auxiliares:
 
-**El índice pasa de tabla a rejilla, y no es solo aspecto:** en una tabla las nueve piezas se
-leen como una cola —una detrás de otra, y la primera parece la más importante—. En rejilla se
-leen como un conjunto, que es lo que son. El número sigue dando el orden a quien lo quiera
-seguir. Cada celda entera es el enlace: no hay links anidados y el área de pulsación es la
-celda completa.
-
-**El titular tuvo que partirse en dos.** A cuerpo de display, la frase de 158 caracteres
-ocupaba **siete líneas** y dejaba de funcionar como titular: se leía como un párrafo grande.
-Ahora `profile.headline` es corto (lo que construye, dos o tres líneas) y `profile.lead`
-lleva el contexto que no cabe arriba. El peso sube a 600: a 500 la frase no sostiene el
-tamaño.
-
-El vacío tras el titular es deliberado y grande — en la referencia es lo que separa la
-portada de la ficha, y es lo único que da peso al titular sin subirle el cuerpo. El mapa de
-puntos lo **sella** sin llenarlo: pequeño y a la derecha, como el cuño de una lámina técnica.
-
-Desaparece `Rail`; entran `SheetHead`, `SheetFoot`, `Spec` (`SpecGrid` / `SpecCell`) e
-`IndexGrid`. `Block` y `DecisionRecord` pasan a `.spec-tag` para que el detalle hable el
-mismo idioma que la portada.
-
-### Dos paneles, no un documento (v5, derogado)
-
-La v4 movió el rótulo del margen a la cabecera del bloque, pero seguía siendo **lo mismo por
-debajo**: cabecera arriba, bloques apilados, un scroll de arriba abajo. Un repintado con
-otra retícula.
-
-A partir de 1024px la página deja de ser un documento que se recorre:
-
-```
-┌───────────────┬──────────────────────────────────────┐
-│ Alexander     │  Índice                     9 piezas │
-│ Parco Flores  │  ──────────────────────────────────  │
-│               │  01  API Tracking Perú  proyecto …   │
-│ full-stack    │  02  Shalom API Perú    proyecto …   │  ← se desplaza
-│ Lima, Perú    │  …                                   │
-│               │                                      │
-│ titular…      │  Perfil                              │
-│ CV ↓          │  ──────────────────────────────────  │
-│ github ↗      │  bio          │ Trayectoria          │
-│               │                                      │
-│ índice        │                                      │
-│ perfil        │                                      │
-│ © 2026 [tema] │                                      │
-└───────────────┴──────────────────────────────────────┘
-   fijo (sticky)          en movimiento
-```
-
-**La identidad no se desplaza nunca.** El rail vive en el shell (`App.tsx`), no en el Home,
-así que al abrir un proyecto **solo cambia el panel derecho**: no hay que volver atrás para
-encontrar el correo, y la navegación se siente instantánea porque la mitad de la pantalla no
-se repinta.
-
-Detalles que no son opcionales:
-
-- **`items-start` en la retícula del shell.** Sin él la columna del rail se estira a la
-  altura de la fila y `position: sticky` se queda sin margen donde pegarse: deja de pegarse,
-  en silencio.
-- **`h-screen` + `overflow-y-auto` en el rail.** En pantallas bajas se desplaza el panel, no
-  la página.
-- **El nombre del rail NO reusa `--text-h1`.** El `h1` llega a 68px, correcto en el panel
-  derecho y desbordado en una columna de 21rem —«Alexander» mide 340px a ese cuerpo—. Tiene
-  su propio token `--text-name`, con el techo calculado para que la palabra más larga quepa.
-
-Desaparecen `Nav`, `Footer`, `Masthead` y el contenedor global `.page`: el ancho lo fija el
-shell, porque los dos paneles miden distinto.
-
-### El índice es la página (v4, sigue vigente)
-
-Las versiones 2.x cambiaron paleta, tipografía y densidad, pero **todas conservaban el mismo
-esqueleto**: retícula `etiqueta | contenido` repetida en cada sección, secciones apiladas en
-el mismo orden, y el trabajo en cuarta posición. Eran repintados. Esta versión cambia el
-esqueleto.
-
-| | 2.x | 4.0 |
+| Token | Valor oklch | Papel |
 |---|---|---|
-| Retícula | `etiqueta \| contenido` en **cada** sección, canaleta lateral de 11rem | **sin canaleta.** Rótulo arriba a todo lo ancho + filete; el contenido usa el ancho completo |
-| Orden | hero → perfil → exp → edu → proyectos → notas | **cabecera → índice → perfil** |
-| El trabajo | dos listas (proyectos, notas) en posición 4 y 5 | **un índice único, lo primero** |
-| Exp / Edu | dos secciones con resumen y viñetas | **una ficha al margen** del perfil |
-| Secciones | 5 | **2** |
+| `--color-accent` | `oklch(0.820 0.085 60)` | El melocotón, la luz del horizonte. **Solo marca lo pulsable y el sol.** |
+| `--color-accent-dim` | `oklch(0.740 0.018 100)` | Acento apagado (nótese que coincide con `ink-muted`). |
+| `--color-haze` | `oklch(0.700 0 0)` | Gris neutro (croma 0), niebla. |
 
-**Por qué.** La canaleta lateral hacía que el contenido nunca usara más de la mitad del
-ancho: la página entera se leía como una columna estrecha con anotaciones al margen. Y el
-orden era el de un currículum, no el de un portfolio — quien entra viene a ver el trabajo, y
-el trabajo estaba debajo de una biografía y un historial laboral.
+**El acento no es decoración.** Su regla es que solo aparece en lo que se puede pulsar y en el sol. Se ve en la práctica en:
 
-**El índice ES la página.** Proyectos y notas se aplanan al mismo tipo (`IndexItem`) y se
-pintan en una sola tabla numerada: `nº · título · tipo · tema · año`. En el índice son lo
-mismo —cosas que escribió— y separarlos obligaba a leer dos tablas con las mismas columnas.
-El orden es explícito, no cronológico: primero producción, luego herramientas, luego notas.
+- `.link:hover` cambia `color` a `--color-accent` y enciende el subrayado (`text-decoration-color: currentColor`); en reposo el enlace es tinta con subrayado `--color-rule`.
+- `:focus-visible` dibuja `outline: 2px solid var(--color-accent)`.
+- `::selection` usa el acento mezclado al 25% con transparente.
+- El sol (`.ball`) y sus animaciones de resplandor, todo en tonos melocotón.
 
-*Precio:* el historial laboral pierde las viñetas de logros, que ahora solo están en el CV.
-Es la contrapartida aceptada a que el trabajo propio abra la página.
+Crema sobre la foto (papel aparte):
 
-**Detalle de implementación:** el índice se pinta como tabla pero se marca como `<ul>`. Hacer
-clicable una `<tr>` obliga a `position: relative` sobre ella, que es donde los navegadores
-divergen; con `<li>` el stretched-link funciona igual en todos. Cada celda que no es el
-título lleva su etiqueta en `sr-only`: en pantalla la columna se explica por posición, pero
-en un lector no hay columnas y «proyecto 2025» suelto no dice de qué es.
-
-Componentes retirados por quedar huérfanos: `Section`, `Hero`, `ProjectRow`, `SnippetRow`,
-`MetaList`, `ExperienceList`, `EducationList`, `StackList`. Los tokens `--gutter-*` y las
-clases `.grid-spec` / `.spec-label` salen del CSS.
-
-### El perfil habla de la persona, no de los empleos
-
-La bio tuvo cuatro párrafos y los cuatro hablaban de **trabajos**: dónde estuvo, con qué
-stack, qué construyó. Eso ya está en la ficha de trayectoria y en el CV — repetirlo en prosa
-no añadía nada sobre quién es.
-
-La versión actual dice **cómo decide**, y cada afirmación se apoya en algo verificable que
-está en este mismo sitio: las tres herramientas que escribió para sí mismo, la elección de
-texto plano sobre base de datos en `mnemo`, el formato de registro de decisión de cada ficha.
-
-**Regla: nada de biografía inventada.** Si una frase del perfil no se puede sostener con un
-repo o con una decisión documentada, no se escribe. Lo que solo sabe él —por qué empezó, qué
-le gusta fuera del código— lo tiene que poner él; no se rellena con plausibilidades.
-
-### La única animación del sitio: el campo de celdas
-
-Una rejilla de 12×12 en la mitad derecha del hero. Las celdas encendidas **se funden entre
-sí**: cuando dos contiguas están activas, la unión se resuelve en un filete cóncavo, como una
-gota. El patrón muta cada 2,2 s.
-
-**La fusión no se dibuja, se filtra.** `feGaussianBlur` difumina las celdas hasta que las
-vecinas se solapan y `feColorMatrix` sube brutalmente el contraste del canal **alfa**, lo que
-vuelve a endurecer el borde: donde dos manchas difuminadas se solapaban queda un filete,
-donde no, el borde original. Es la única forma de conseguirlo sin resolver metaballs a mano.
-
-Consecuencias que hay que respetar:
-
-- **Las celdas se dibujan sin separación.** El filete nace de que los cuadrados se toquen; si
-  se separan, no hay nada que fusionar.
-- **El par (desenfoque, contraste) está ajustado contra el radio de la celda.** Con
-  `stdDeviation` corto, las esquinas redondeadas de dos celdas contiguas no llegan a
-  puentearse y el tramo sale **festoneado** en vez de continuo. Valores actuales: blur 9,
-  alfa ×26 −13, radio 22 %.
-- **El patrón son TRAZOS de 2–5 celdas, no celdas sueltas.** Un ruido de celdas
-  independientes se ve como estática y casi nunca produce vecinas, que es justo lo que la
-  fusión necesita para notarse.
-- **PRNG con semilla**, no `Math.random`: el mismo patrón en cada visita y nada de aleatorio
-  durante el render.
-- Anima con `setInterval` + transiciones CSS, **no** `requestAnimationFrame`. Respeta
-  `prefers-reduced-motion` (un patrón fijo, sin intervalo) y va `aria-hidden`.
-
-**Trampa de layout:** la columna del campo mide `26rem` FIJO, no `auto`. Con `auto` la pista
-se dimensiona por su contenido, y el contenido es `w-full`, que se resuelve contra la propia
-pista: la referencia es circular y **la columna colapsa a cero** — la animación desaparece sin
-error ninguno.
-
-### Monocromo: una sola tinta
-
-La referencia es un **programa impreso a una tinta**. No hay un solo tono de color en la
-página: `--color-accent` es literalmente `--color-ink`. El énfasis lo dan el **brillo**
-(papel contra gris), el **tamaño** y el **filete**.
-
-Consecuencias que NO son opcionales:
-
-- **Todos los enlaces llevan subrayado permanente.** Si el color no distingue, el subrayado
-  es la única señal que queda, y no puede aparecer solo en `:hover`.
-- **El gesto firmado cambia de brillo, no de tono**: la etiqueta de la sección activa pasa de
-  gris a papel.
-- El token `--color-accent` se conserva en vez de borrarlo de cuarenta sitios, para que
-  reintroducir una tinta sea cambiar **una línea**.
-
-La temperatura sigue viniendo del paisaje —oscuros fríos, luces cálidas—, y es lo que evita
-que el monocromo se lea como gris de sistema.
-
-**El fondo oscuro es `#070707`: casi negro y NEUTRO.** Una versión anterior tenía el fondo
-en `hue 168` y el gris atenuado en `hue 150` con croma 0.009–0.012 — sobre el papel «un
-matiz que apenas se nombra», en pantalla **se leía verdoso**. Dos motivos: en superficies
-grandes un croma de 0.01 sí se nota, y el texto atenuado está por todas partes.
-
-**Regla: el matiz vive en el texto, nunca en el fondo.** Toda la estructura va a croma 0
-—fondo, superficie, filete, estado de fila—; el único calor está en la tinta (crema,
-`hue 92`) y en su versión atenuada. Escala medida en el navegador:
-
-| token | hex | contra el fondo |
+| Token | Valor oklch | Papel |
 |---|---|---|
-| `bg` | `#070707` | — |
-| `surface` | `#101010` | superficie de código |
-| `bg-hover` | `#171717` | estado de celda |
-| `rule` | `#2C2C2C` | 1,44:1 (decorativo) |
-| `ink-muted` | `#8D8B87` | **5,92:1** AA |
-| `ink` | `#E8E4D9` | **15,86:1** AAA |
+| `--color-cream` | `oklch(0.955 0.022 85)` | Texto que va **sobre la foto**. |
+| `--color-cream-dim` | `oklch(0.955 0.022 85 / 0.72)` | Igual, al 72% de opacidad. |
 
-Para comprobar que no queda verde no vale mirarlo: se mide `g − (r+b)/2` sobre el color que
-resuelve el navegador. Estructura, **0,0**. La tinta da 3,5 pero con `r > g > b`, que es
-crema cálido — el verde exigiría `g > r`.
+**Trampa:** `--color-cream` hoy casi coincide con `--color-ink`, pero el comentario advierte que **son papeles distintos a propósito**: `cream` depende de la foto (contraste contra el cielo de tormenta), no del fondo de la página. Si algún día cambia la foto o el fondo, se mueven por separado; no hay que colapsarlos aunque parezcan el mismo valor.
 
-Al bajar el fondo, la veladura de atmósfera pesa relativamente más sobre él, así que baja a
-3,5 % / 3 % y el grano a 2,5 %. Peor caso medido con la veladura encima: muted a **5,71:1**.
+### 1.3 Tipografía
 
-### Densidad: capítulos y bloques de metadatos
+Dos familias, con una división de trabajo clara: **sans para leer, mono solo para lo que se escanea** (fechas, tags, código).
 
-Las secciones van **numeradas** (`01 Perfil.`, `02 Exp.`) porque en la referencia el número
-ordena, no grita: dice cuántas secciones hay y en cuál estás sin contarlas.
+- `--font-sans`: `"Geist Variable", ui-sans-serif, system-ui, -apple-system, sans-serif`. Es la fuente del `body`.
+- `--font-mono`: `"JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace`.
 
-Cada entrada de proyecto es una **entrada de programa en dos columnas**: a la izquierda lo
-que se lee (título, resumen, coste), a la derecha un `<MetaList>` de pares etiqueta/valor
-(`stack`, `repo`, `demo`, `fecha`). Antes eso estaba repartido en tres esquinas de la fila —
-tags arriba a la derecha, enlaces abajo a la izquierda, fecha abajo a la derecha—; **un solo
-bloque se lee de un barrido, tres esquinas obligan a tres.** Las filas sin valor no se
-renderizan: un `demo` vacío no deja etiqueta huérfana.
+La escala de tamaños (`--text-*`) va de metadato a titular, con line-height —y en algunos casos peso y tracking— empaquetados en el mismo token al estilo Tailwind v4:
 
-### Trampa: `opacity` sobre texto ya atenuado
+| Token | Tamaño | line-height | Extras | Uso |
+|---|---|---|---|---|
+| `--text-micro` | `0.75rem` (12px) | 1.5 | — | tags (mono) |
+| `--text-meta` | `0.8125rem` (13px) | 1.5 | — | fechas, rótulos (mono) |
+| `--text-body` | `1rem` (16px) | 1.75 | — | prosa (default del body) |
+| `--text-title` | `1rem` (16px) | 1.4 | weight 500 | título de fila |
+| `--text-lead` | `1.125rem` (18px) | 1.65 | — | entradilla |
+| `--text-h2` | `1.25rem` (20px) | 1.35 | weight 600, tracking -0.01em | apartado dentro de un post |
+| `--text-h1` | `clamp(1.75rem, 1.5rem + 1.1vw, 2.25rem)` (28→36px) | 1.15 | weight 600, tracking -0.025em | titular |
 
-Al hacerlo denso se usó `opacity-70` en las etiquetas de metadato y `opacity-60` en el
-numeral. Parece un matiz y **es una pérdida de contraste**: sobre un gris que ya está a
-6:1, un 70 % lo deja en **3,57:1**, y el numeral cayó a **2,94:1** — los dos suspenden AA a
-11–12 px. Se corrigió separando etiqueta y valor por **brillo** (`ink-muted` contra `ink`),
-que distingue igual y no cuesta legibilidad.
+Nota: `--text-body` y `--text-title` comparten tamaño (16px); lo que los separa es el line-height (1.75 vs 1.4) y el peso (500 en title). El único tamaño fluido es `--text-h1`, con `clamp` de 28 a 36px.
 
-**Regla: nunca `opacity` sobre texto.** Si hace falta atenuar, se usa un token de color, que
-es medible. Medido en el navegador: todo el texto de la página está en 6,01:1 o 15,13:1.
+Ajustes globales de texto: el `body` activa `-webkit-font-smoothing: antialiased` y `text-rendering: optimizeLegibility`; los enlaces llevan `text-underline-offset: 0.22em` y `text-decoration-thickness: 1px`.
 
-### Qué se publica de un empleador, y qué no
+### 1.4 Otros tokens del sistema
 
-**Regla dura.** De una empresa donde trabajaste se publica: **nombre, cargo, fechas, dominio
-del producto y tecnología**. No se publica **ninguna cifra suya** —clientes, facturación,
-número de servicios, tamaño de plantilla— ni nada que describa **una debilidad de sus
-sistemas**.
+Además del color y la tipografía, `@theme` define la retícula, los radios y el movimiento:
 
-Dónde trabajaste es historial tuyo y omitirlo parece evasivo. Cuántos clientes de pago
-tenían es información comercial de ellos, y nadie te autorizó a difundirla.
+- `--spacing: 4px` — unidad base de espaciado de Tailwind.
+- `--container-page` y `--container-prose`: ambos `42rem` (672px). El comentario lo llama "la columna de todo el sitio": una única columna de lectura.
+- `--radius-sharp: 6px` — radio de esquina.
+- Movimiento: `--ease-out: cubic-bezier(0.2, 0, 0, 1)`, y tres duraciones — `--dur-state: 150ms` (estados), `--dur-enter: 220ms` (entrada de ruta), `--dur-image: 200ms` (imágenes).
 
-Lo que se quitó y por qué:
+El sistema respeta `prefers-reduced-motion: reduce`: desactiva el scroll suave y colapsa animaciones y transiciones a 0.01ms.
 
-| Se decía | Problema | Ahora |
-|---|---|---|
-| «+7,000 empresas activas» | métrica **comercial** del empleador | «entorno multi-tenant en producción» |
-| «22 microservicios… equipo de 3» | **arquitectura y plantilla** internas | «arquitectura de microservicios, con ownership sobre diseño, despliegue y estabilidad» |
-| «…más de 10,000 facturas al mes» | volumen de negocio de un cliente | «un servicio crítico y de alto volumen» |
-| «mejorando rendimiento y **seguridad**» | dice que su sistema de facturación corría una versión de Java insegura: **señala una vulnerabilidad** de un antiguo empleador | «migración a una versión mayor de Java… coordinando la puesta en producción» |
+### 1.5 Arranque sin parpadeo
 
-**El panel de cifras se reconstruyó entero con trabajo propio** (`3 años`, `2 APIs propias`,
-`5 couriers`, `1,574 agencias`), todas verificables en sitios públicos suyos. La regla para
-`profile.metrics`: *una cifra entra si describe algo que TÚ construiste u operas, no algo que
-tu empleador tenía mientras estabas ahí.* En `projects.ts` no aplica: son proyectos propios y
-ahí las cifras van con detalle.
+El `<script>` inline de `index.html` es **bloqueante y corre antes del bundle**, es decir antes del primer paint. Un matiz importante: ese script **no fija el tema** (el tema es fijo y oscuro; ya está resuelto por las metas y por `color-scheme: dark`). Lo que fija antes del primer paint es el **idioma**: lee `localStorage.getItem("lang")`, y si no es `"es"` ni `"en"`, cae al idioma del navegador (`navigator.language`), forzando `"es"` como default. Luego escribe `document.documentElement.lang`.
 
-Ojo con los **fragmentos**: el de NestJS repetía «22 microservicios para un equipo de tres»
-en el cuerpo del markdown. Al revisar esta regla hay que hacer `grep`, no solo mirar
-`experience.ts`.
+El motivo: el sitio es una SPA con una sola URL para los dos idiomas, así que el HTML estático no sabe de antemano qué idioma toca. El script tiene que **replicar la lógica del detector de i18next** (misma clave `lang`, mismo orden: elección guardada y luego idioma del navegador); si no, `<html lang>` diría una cosa y la página se pintaría en otra durante el primer frame. `lang="es"` en el `<html>` es solo el valor de partida —lo que ve un rastreador sin JavaScript—; el script lo corrige antes del paint y `DocumentMeta` lo mantiene al día en caliente.
 
-### El nav tiene tres anclas, y `exp` / `edu` no son dos de ellas
+Donde sí hay control anti-parpadeo visual es en el **skeleton de carga**: entra con 150ms de retraso (`animation: enter ... 150ms both`), de modo que si el contenido llega antes de 150ms —lo normal con la precarga— el skeleton no se ve nunca y no hay flash.
 
-**Dónde trabajaste y dónde estudiaste describen quién eres: son el perfil, no destinos
-aparte.** Como anclas sueltas inflaban el nav de 3 entradas a 5 sin añadir ningún sitio nuevo
-al que ir. Siguen siendo secciones con su etiqueta en la canaleta —ahí sí son estructura del
-documento—, pero al leerlas se enciende `perfil`.
 
-Lo resuelve `Anchor.covers` en `Nav.tsx`: cada ancla declara qué secciones representa, el
-observer vigila **todas** (`anchors.flatMap(a => a.covers)`) y la comparación es
-`covers.includes(spy)` en vez de `spy === id`. Si se observaran solo las tres del nav, al
-entrar en `exp` no se encendería ninguna.
+## 2. Estructura, rutas y rendimiento
 
-### El diseño lo hace el contraste de escala, no los adornos
+### 2.1 Una sola columna, tipo blog
 
-Una página sin decoración necesita **una** fuente de jerarquía, y aquí es el salto de tamaño:
-`h1` de 40→84px contra un cuerpo de 15px, ~5× en pantalla grande. Por eso el **titular BAJÓ**
-a 16→18px: subir titular y nombre a la vez aplana la página y anula el efecto.
-
-Lo que se quitó por la misma lógica: la barra decorativa del hero (`mark-bar`), que ya vive
-en el logotipo del nav y sobraba en la única zona que gana quitando cosas.
-
-Detalle tipográfico: el punto de las etiquetas (`Perfil.`, `Proyectos.`) lo pone
-`.spec-label::after`, no el dato. Así ninguna etiqueta puede olvidarlo y el texto real de la
-sección sigue siendo `Perfil`.
-
-Las filas de experiencia y formación van en **tres columnas alineadas** (empresa · cargo ·
-fechas) en ≥768px. Alineadas y no en una frase porque así las entradas se leen en vertical,
-columna a columna: primero dónde, luego qué, luego cuándo.
-
-### Sin sección de stack
-
-Se eliminó `Stack` (sección, ancla, `StackList` y el export `stack`). Una lista de
-tecnologías es una **afirmación**; los tags de proyectos reales y las descripciones de
-experiencia son **evidencia**, y ya cubren la misma información. El nav baja a 5 anclas.
-
-### La paleta viene de un cuadro, y lo que se toma no es el color
-
-La referencia es un paisaje pintado: cielo verde-azulado en sombra, luz cálida de atardecer
-sobre las nubes, campo salvia, neblina. **Lo que se toma de ahí no es "verde": es el
-contraste de temperatura.** Los oscuros son fríos (verde-azulados) y las luces son cálidas
-(crema y oro). Esa sola relación es lo que hace que algo se lea como atmósfera en vez de
-como una interfaz oscura — y pasar los oscuros a gris neutro rompe el efecto entero aunque
-los acentos no cambien.
-
-**El tema base es el CLARO**, y no es una preferencia: la referencia es una escena de día.
-Una versión oscura acierta la paleta y falla el ánimo. El oscuro existe, es fiel a las
-sombras del mismo cuadro, y se elige.
-
-**La atmósfera son dos veladuras y grano**, en `body::before` / `::after`, fijos y con
-`z-index: -1`: luz cálida entrando por arriba a la derecha, bruma fría por la izquierda, y
-un `feTurbulence` inline (~250 B) al 3 %. *Las opacidades están calculadas, no elegidas a
-ojo:* la veladura cálida sube la luminancia del fondo y hunde el contraste del texto muted
-que cae encima. **A 9 % el muted baja a 3,8:1 y suspende AA; a 5 % se queda en 5,5:1.** Quien
-suba ese número tiene que rehacer la cuenta.
-
-> **El cuadro NO se incrusta.** Es obra de alguien y publicarla sería redistribuirla sin
-> licencia. Del cuadro sale la paleta y la calidad de luz, nada más.
-
-### Las cuatro decisiones, con su precio
-
-**1. El reparto de familias es funcional, no semántico.** La regla vieja ("mono si es
-catalogable, sans si lo escribió un humano") obligaba a decidir en cada elemento y se
-decidía mal. La nueva es de una sola pregunta: **¿esto se lee o se escanea?** Sans para lo
-que se lee (titulares, prosa, títulos de fila); mono para lo que se escanea (etiquetas,
-cifras, fechas, tags, código). *Precio:* dos familias que cargar (~46 kB extra en woff2).
-
-> **Nota de una reversión.** Entre medias el sitio estuvo **100% en mono**, y quedaba bien
-> en captura. Era un error: un párrafo largo en monoespaciado le cuesta a quien barre el
-> doble de tiempo, y ese tiempo es justo el que no tiene. La coherencia de una sola familia
-> era una preferencia; la velocidad de lectura es del que revisa. No repetir.
-
-**2. NO hay panel de cifras en el hero.** Hubo uno y se retiró. Merece quedar escrito
-porque la idea vuelve sola:
-
-- *Primera versión:* `+7,000 empresas`, `22 microservicios`. Retiradas por confidencialidad
-  (ver arriba): no eran cifras suyas.
-- *Segunda versión:* `5 couriers`, `1,574 agencias`. **Error de categoría.** Son métricas de
-  **un proyecto** (API Tracking Perú); puestas en el hero fingen ser estadísticas de
-  carrera. Ese dato pertenece a la ficha del proyecto, donde tiene contexto.
-- *Lo que quedaba:* `3 años`, `2 APIs propias`. **Ya lo dice el titular**, dos líneas más
-  arriba. En cuerpo grande no destacaban nada: duplicaban.
-
-La lección: **un portfolio personal no es un dashboard.** Antes de dar a una cifra el tamaño
-de un titular hay que responder dos preguntas — *¿es mía?* y *¿no la digo ya en otro sitio?*
-Si falla cualquiera, no va. El impulso original (que los hechos se escaneen) era correcto; el
-sitio donde se resolvió, no: se resuelve en el **titular**, que es una sola frase densa.
-
-**3. El CV en PDF es un enlace de primera clase**, en el hero y marcado en acento. Quien
-revisa necesita adjuntarlo a su proceso; esconderlo en el pie le obliga a pedirlo por
-correo, y a veces no lo pide. *Precio:* hay que reponer `public/cv-alexander-parco.pdf` cada
-vez que cambie el CV, y nada avisa si se olvida.
-
-**4. Producción antes que open-source.** Se leen dos o tres filas y se decide; en ese
-espacio pesa más una API pública con usuarios que una herramienta de desarrollo, por buena
-que sea. *Precio:* las herramientas OSS, que son el trabajo más personal, quedan más abajo.
-
-### ~~Bilingüe: el idioma vive en la URL~~ (v6.4, DEROGADO por la v6.6)
-
-> **Derogado.** Se eligió lo contrario: el idioma vive en el navegador y las URLs no lo
-> llevan. Se conserva el razonamiento porque el precio que se paga ahora es exactamente lo
-> que esta sección defendía, y conviene tenerlo delante si algún día se revierte.
-
-El sitio se publica en **español e inglés**. La decisión que lo ordena todo es **dónde vive
-el idioma**, y hay dos opciones reales.
-
-**Estado en memoria** (un `<select>` que reescribe los textos). Es lo fácil: una ruta, un
-`context`, cero trabajo de enrutado. Y rompe tres cosas a la vez: no puedes **compartir** la
-versión inglesa de una nota, un buscador solo indexa **una** de las dos, y volver atrás con
-el navegador no deshace el cambio de idioma. Un portfolio existe para que alguien mande un
-enlace a otra persona; un idioma que no cabe en el enlace es un idioma que no existe.
-
-**El idioma en la URL**, que es lo que se hizo. El español cuelga de la raíz y el inglés de
-`/en`, y **los segmentos también se traducen**:
-
-| Español | Inglés |
-|---|---|
-| `/` | `/en` |
-| `/proyectos/:slug` | `/en/projects/:slug` |
-| `/notas/:slug` | `/en/notes/:slug` |
-
-El `:slug` **no** se traduce. Es la identidad de la pieza, y traducirlo significaría que un
-enlace muere al cambiar de idioma o que hay dos identidades para una sola cosa.
-
-*Precio:* dos árboles de rutas y un conmutador que tiene que saber calcular la **ruta
-equivalente** (`rutaEquivalente`), no limitarse a mandarte al inicio. A cambio, cada página
-es compartible e indexable en los dos idiomas.
-
-El conmutador es un **enlace**, no un botón: cambiar de idioma es navegar. Siendo enlace se
-puede abrir en otra pestaña y lo sigue un buscador. Su texto visible es el **endónimo**
-—"English" dentro del español— porque un idioma escrito en su propia lengua solo puede
-significar "ir ahí"; su `aria-label` va completo y también en el idioma destino.
-
-`<html lang>` lo reescribe `DocumentMeta` en cada navegación. No es cosmético: es lo que
-decide con qué fonética lee un lector de pantalla. Con `lang="es"` fijo, la versión inglesa
-se oiría con fonética española y sería incomprensible. Lo mismo con `<title>`, la
-descripción y los `<link rel="alternate" hreflang>` —incluido `x-default`—, que se inyectan
-en tiempo de ejecución porque apuntan a la ruta equivalente de la página actual y el HTML
-estático, siendo una SPA, no sabe cuál se pidió.
-
-### El diccionario es propio, y la prosa larga va en un fichero por idioma
-
-**No hay librería de i18n.** `react-i18next` son ~15 kB para resolver plurales,
-interpolación y carga diferida de namespaces; aquí son **~40 rótulos** sin ninguna de esas
-tres cosas. El diccionario es un objeto plano con `satisfies Record<string, L>`: si a un
-rótulo le falta un idioma, **no compila**. Esa es toda la garantía que hacía falta.
-
-Los **textos cortos** (rótulos, resúmenes, títulos, el perfil) van intercalados como
-`{ es, en }` en el propio registro. Los **cuerpos largos** —600 palabras por proyecto— van
-en `data/projects/es.ts` y `data/projects/en.ts`, uno por idioma: alternar idioma cada
-párrafo hace imposible releer la prosa de corrido, que es justo lo que hay que hacer para
-escribirla bien. `Record<SlugProyecto, …>` obliga a que ambos ficheros tengan **todos** los
-slugs.
-
-*Traducir es traducir el registro, no las palabras.* El original está en primera persona,
-seco y sin adjetivos de venta; una traducción literal suena a folleto y deja de sonar a la
-persona que lo escribió.
-
-### El peso: `index.ts` es el metadato, `full.ts` es la prosa
-
-La portada pinta **título, resumen, tags y fecha**. La ficha de detalle es la única que
-necesita cuerpo, diagrama y registro de decisión, y ya va en un chunk diferido.
-
-Con un solo módulo de datos, importar el índice arrastraba los **cinco cuerpos completos en
-los dos idiomas** al bundle inicial (103 kB gzip, contra los ~91 kB de cuando el sitio era
-monolingüe). Separando `data/projects/index.ts` (metadato + resumen) de
-`data/projects/full.ts` (la prosa cosida), el bundle inicial baja a **84 kB gzip**: por
-debajo de lo que pesaba con **un solo idioma**.
-
-Corolario: `Snippet.draft` pasa a ser un dato explícito. Antes se derivaba de
-`content.trim() === ''`, y el índice ya no carga los cuerpos — no puede mirar lo que no
-tiene.
-
-### Trampa: una barrera que deja de mirar donde miraba
-
-`scripts/check-placeholders.mjs` impide publicar marcas `[CONTEXTO]`. Barría
-`src/data/*.ts` **plano**. Al mover la prosa a `data/projects/` y `data/snippets/`, seguía
-pasando en verde sin mirar ni una sola línea de lo que vigila. Ahora es recursivo.
-
-La forma general: **cuando mueves ficheros, comprueba que las barreras se movieron con
-ellos.** Una barrera rota no falla — aprueba.
-
-### Ortografía: dónde llevan tilde las cosas, y dónde no (v6.5)
-
-Tres zonas con tres reglas distintas, y confundirlas es lo que produjo el desorden que la
-auditoría encontró:
-
-| Zona | Regla |
-|---|---|
-| Texto que se **renderiza** (datos, rótulos, `index.html`) | Ortografía completa. Sin excepciones. |
-| **Comentarios** de código | ASCII, sin tildes ni `ñ`. Es la convención del repo (104 líneas contra 27). |
-| Interior de un **bloque de código** | Se traduce el comentario, nunca el código. |
-
-El fallo de origen: los cuerpos largos en español se escribieron **con la convención de los
-comentarios** —sin tildes— siendo texto publicado. Convivían "decisión" y "decision",
-"código" y "codigo", "más" y "mas" en la misma página. 22 palabras aparecían escritas de las
-dos formas a la vez.
-
-Los homógrafos **no se arreglan con buscar-y-reemplazar**: `esta`/`está`, `cual`/`cuál`,
-`si`/`sí`, `tu`/`tú`, `publica`/`pública`, `termino`/`terminó`, `que`/`qué` dependen de la
-frase. Se resolvieron uno a uno; lo que sobrevive escrito de dos formas está bien así.
-
-`solo` va **sin** tilde (la RAE ya no la exige), y los plurales de `-ción` la pierden:
-`decisiones`, `sesiones`, `opciones`.
-
-### Trampa: acentuar el castellano y pisar el inglés
-
-Los ficheros bilingües (`profile.ts`, `experience.ts`, los `index.ts`) llevan los dos idiomas
-en el mismo sitio. Una pasada de acentuación sobre "el español" los trató enteros como
-españoles y metió **"decisión" tres veces dentro de la bio inglesa**. No rompe el build, no
-rompe los tipos, y no se ve hasta que alguien lee la página en inglés.
-
-`scripts/check-placeholders.mjs` lo detecta ahora: ningún valor `en:` puede llevar tilde,
-salvo la lista blanca —`Perú` (nombre propio de producto) y `Español` (el endónimo del
-conmutador)—. La forma general es la misma que la de la barrera recursiva: **un error que
-no rompe nada es el que hay que automatizar**, porque es el único que nadie va a ver.
-
-### Los diagramas ASCII también son texto
-
-Sus rótulos se traducen y se acentúan. Acentuar **no descuadra** la caja: en monoespaciada
-`á` y `a` ocupan una columna, siempre que el fichero esté en NFC y no en NFD —macOS produce
-NFD en algunas rutas, y ahí `á` son dos code points—. Tras cada cambio se comprueba que toda
-línea que abre con `│` cierra en la columna del techo.
-
-### Apóstrofos: `’` en prosa, `'` en código
-
-En inglés convivían `courier's` y `courier’s`, la misma palabra de dos formas. La prosa lleva
-el tipográfico `’`; dentro de un bloque de código el apóstrofo es **sintaxis** y se queda
-recto. El español no usa ninguno.
-
-### El idioma vive en el navegador, no en la URL (v6.6)
-
-Una sola URL sirve las dos versiones. La elección se guarda en `localStorage`, y en la
-primera visita se toma del idioma del navegador.
-
-**El precio es real y es el que la v6.4 quería evitar:** no se puede compartir el enlace de
-una nota "en inglés", un buscador solo indexa una de las dos versiones, y el botón atrás no
-deshace un cambio de idioma. Se acepta a cambio de URLs limpias: `alexparco.dev/notes/mnemo`
-y no `alexparco.dev/en/notes/mnemo`.
-
-Las **rutas van siempre en inglés**, también cuando la página se lee en castellano:
-
-| | |
-|---|---|
-| `/` | portada |
-| `/projects/:slug` | ficha de proyecto |
-| `/notes/:slug` | nota |
-
-Y los **slugs también**: `tmux-varias-sesiones` pasó a `tmux-many-sessions`, y
-`memoria-persistente-agentes` a `agent-persistent-memory`. Una pieza tiene una URL y solo
-una; que no dependa del idioma es lo que hace que un enlace compartido siga vivo.
-
-`<html lang>` lo fija un script **bloqueante** en `index.html`, igual que el tema. Tiene que
-replicar la lógica del detector de i18next —misma clave, mismo orden— o el atributo diría una
-cosa mientras la página se pinta en otra durante el primer frame.
-
-**No hay `hreflang`.** Solo tiene sentido cuando cada idioma tiene su URL; apuntando los dos
-a la misma dirección le estaríamos afirmando al buscador algo que no es cierto.
-
-### `react-i18next` en vez del diccionario propio (v6.6)
-
-Cuesta **17 kB gzip** — el bundle inicial pasa de 84 a 102 kB. Lo que se compra: el detector
-de idioma con persistencia, que ahora hace falta de verdad porque la URL ya no dice el
-idioma, y plurales e interpolación disponibles el día que hagan falta.
-
-Dos cosas se conservan **a propósito**:
-
-1. **Los rótulos se siguen escribiendo agrupados por clave**, con los dos idiomas juntos, y
-   `recursos` deriva de ahí la forma por idioma que i18next quiere. Mantener las dos formas a
-   mano serían dos fuentes de verdad para lo mismo. Y `satisfies Record<string, L>` sigue
-   siendo lo que impide publicar un rótulo sin traducir: i18next por su cuenta cae al
-   `fallbackLng` y sirve el idioma equivocado **sin decir nada**.
-2. **Los cuerpos largos NO entran en i18next.** 5.000 palabras de markdown dentro de un JSON
-   de traducciones son inmanejables; siguen en `es.ts`/`en.ts` y `tr()` elige la rama.
-
-`load: 'languageOnly'` no es opcional: sin él un navegador en `en-US` no encuentra `en`, cae
-al fallback y ve el sitio en castellano teniendo su idioma traducido.
-
-### Trampa: la inversión aplicada dos veces
-
-`cambiarIdioma` guardaba los endónimos **ya invertidos** (`es: 'English'`) para leerse con el
-idioma actual. Al pasar a leerse con el idioma destino, la inversión se aplicó otra vez y el
-botón anunciaba el idioma **en el que ya estabas**. Compila, no rompe nada y se ve sola en
-cuanto miras el botón.
-
-Ahora cada idioma va en su casilla (`es: 'Español'`) y la inversión la hace una sola vez
-quien lee. La forma general: **un dato no se guarda pre-transformado para un consumidor
-concreto**; se guarda como es y transforma quien lo usa.
-
-### Lo que NO cambia
-
-El **registro de decisión** (problema / decisión / trade-off) sigue siendo el eje del sitio
-y su única diferencia real: casi ningún portfolio dice qué precio pagó. Y la **marginalia
-viva** sigue siendo el único movimiento de color: la etiqueta de la sección que estás
-leyendo pasa a amarillo, vía CSS (`section[data-active] > .page > .spec-label`) para que el
-mismo selector cubra `:focus-within`.
-
-### Trampa a no repetir
-
-`last:border-b-0` sobre el `<article>` de `ProjectRow` / `SnippetRow` **acierta siempre**: el
-`<article>` es hijo único de su `<li>`, así que borraba TODOS los separadores, no el último.
-
-### Correcciones heredadas que siguen en pie
-
-- `FRAGMENTOS` → **`NOTAS`** (etiqueta, ancla y ruta `/notas/:slug`): medía 76px y la
-  canaleta móvil son 72px.
-- Sección **`Edu`** (`#formacion`) con su ancla. El nav tiene 6 anclas.
-- `Job` gana `summary` y `highlights[]` y pierde `logo`; no se renderizan logos.
-- `NotFound` va dentro de `.page`.
-
----
-
-## 1. Tesis
-
-El portfolio es una ficha técnica: una canaleta de metadatos en mono que **nunca colapsa** (ni en 320px), una columna de contenido en sans, hairlines de 1px como única línea del diseño — y un solo gesto firmado: **la etiqueta de la sección en la canaleta se enciende en ocre mientras la lees**, porque las etiquetas no son ornamento, son el índice navegable del documento.
-
-### Correcciones obligatorias respecto al concepto ganador (no negociables)
-
-| # | Crítica | Corrección aplicada |
-|---|---|---|
-| 1 | La retícula colapsa <768px → el concepto muere en móvil | **La retícula de 2 columnas NUNCA colapsa.** `4.5rem 1fr` en móvil, `7.5rem 1fr` en ≥768px. La etiqueta mono sigue siendo canaleta, no subtítulo huérfano. Móvil es la forma primaria. |
-| 2 | Los números `01–05` son ornamento | **Eliminados.** Las etiquetas ganan función real: cada una es un `id` de ancla (`#perfil`, `#proyectos`…), el nav navega a ellas, y el scroll-spy las enciende. Son un TOC, no decoración. |
-| 3 | No hay gesto memorable | **Marginalia viva**: la etiqueta de la sección visible es lo único de la página que cambia de color al hacer scroll. Idéntico en teclado (`:focus-within`). Único, barato, sobrevive a `reduced-motion`. |
-| 4 | El repo/demo están enterrados a 1 click + 1 scroll | **Los links `code ↗` / `demo ↗` viven EN la fila del listado** y en el hero del detalle, sobre el fold. |
-| 5 | `/works` es idéntica al home; `/snippets` tiene 1 item | **Se eliminan las rutas de listado.** Home lista los 4 proyectos y el fragmento completos. El nav son anclas. Rutas: `/`, `/proyectos/:slug`, `/fragmentos/:slug`. |
-| 6 | Code blocks / markdown fuera del sistema | **Sección 5.8 completa**: token `--color-surface` (superficie ≠ estado), reglas para code block, inline code, listas, tablas, blockquote. Y la regla que desambigua mono-dato vs mono-código. |
-| 7 | Empty state, overflow de tags, imágenes de experiencia sin spec | Especificados en §6.4, §5.4 y §5.3. |
-| 8 | Focus ring en `--accent-mark` (~3.2:1) | Focus ring usa **`--color-accent`** (6.3:1 / 9.1:1). `--accent-mark` solo para la marca de hover (decorativa, redundante con el cambio de fondo). |
-| 9 | El borde izquierdo de hover causa layout shift | Se implementa con **`::before` absoluto**, nunca con `border`. |
-| 10 | `img[data-loaded]` se queda en opacity 0 si está cacheada | Se chequea `ref.current.complete` en `useEffect`. |
-| 11 | Typo "Fronted Developer" en el dato más visible | **Corregir el dato**: `Frontend Developer` en `experience.ts` y en el rol del hero. |
-| 12 | Sin regla de idioma | **Regla dura**: toda la UI y la prosa en español. Solo son inglés los nombres propios técnicos (TypeScript, Spring-Boot, ReactJS) y el código. Nav: `perfil · stack · experiencia · proyectos · fragmentos`. Rol: `Desarrollador Fullstack`. |
-
----
-
-## 2. Design tokens — `src/styles/theme.css` (literal, copiable)
-
-```css
-@import "tailwindcss";
-
-/* Dark mode por atributo en <html>. Obligatorio en Tailwind v4. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
-
-@theme {
-  /* ─── Color (light es el default) ─────────────────────────────────── */
-  --color-bg:          oklch(0.980 0.003 95);   /* #FAF9F6  papel cálido  */
-  --color-surface:     oklch(0.955 0.004 95);   /* #F1EFE9  code blocks, marcos de imagen */
-  --color-bg-hover:    oklch(0.940 0.005 95);   /* #E9E6DF  estado hover/focus de fila     */
-  --color-ink:         oklch(0.240 0.012 262);  /* #2B2F36  13.2:1 sobre bg   (AAA)        */
-  --color-ink-muted:   oklch(0.500 0.012 262);  /* #6E7480   5.1:1 sobre bg   (AA)         */
-  --color-rule:        oklch(0.885 0.005 95);   /* #DEDBD4  hairline 1px                   */
-  --color-accent:      oklch(0.500 0.140 50);   /* #98511F   6.3:1 sobre bg   (AA) + focus */
-  --color-accent-mark: oklch(0.620 0.160 55);   /* #C06B2C  marca 2px decorativa (no texto)*/
-
-  /* ─── Tipografía ──────────────────────────────────────────────────── */
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
-
-  --text-label: 0.6875rem;              /* 11px  — etiquetas de canaleta, uppercase */
-  --text-label--line-height: 1.4;
-  --text-label--letter-spacing: 0.09em;
-  --text-label--font-weight: 500;
-
-  --text-meta: 0.8125rem;               /* 13px  — tags, fechas, nav, links mono */
-  --text-meta--line-height: 1.6;
-
-  --text-sm: 0.875rem;                  /* 14px  — apoyo, empresa, subtítulos */
-  --text-sm--line-height: 1.65;
-
-  --text-body: 1rem;                    /* 16px  — prosa */
-  --text-body--line-height: 1.7;
-
-  --text-h3: 1.125rem;                  /* 18px  — título de fila, cargo */
-  --text-h3--line-height: 1.4;
-  --text-h3--font-weight: 500;
-
-  --text-h2: 1.5rem;                    /* 24px  — título de detalle */
-  --text-h2--line-height: 1.3;
-  --text-h2--font-weight: 500;
-
-  --text-h1: clamp(1.75rem, 1.4rem + 1.75vw, 2.75rem);
-  --text-h1--line-height: 1.1;
-  --text-h1--letter-spacing: -0.02em;
-  --text-h1--font-weight: 500;
-
-  /* ─── Espaciado (base 4px) ────────────────────────────────────────── */
-  --spacing: 4px;                       /* p-1 = 4px … p-6 = 24px … p-16 = 64px */
-
-  /* ─── Medidas del sistema ─────────────────────────────────────────── */
-  --container-page:   880px;            /* max-width del contenedor          */
-  --container-prose:  68ch;             /* measure de la prosa               */
-  --gutter-sm:        4.5rem;           /* canaleta mono <768px  (72px)      */
-  --gutter-lg:        7.5rem;           /* canaleta mono ≥768px  (120px)     */
-
-  --radius-sharp: 2px;                  /* radius global, único              */
-
-  /* ─── Motion ──────────────────────────────────────────────────────── */
-  --ease-out: cubic-bezier(0.2, 0, 0, 1);
-  --dur-state: 120ms;                   /* hover / focus / spy               */
-  --dur-enter: 160ms;                   /* entrada de ruta                   */
-  --dur-image: 200ms;                   /* fade-in de imagen                 */
-}
-
-/* ─── Override dark. Mismos nombres de token, otros valores. ────────── */
-[data-theme="dark"] {
-  --color-bg:          oklch(0.180 0.008 262);  /* #17191C */
-  --color-surface:     oklch(0.220 0.009 262);  /* #1F2226 */
-  --color-bg-hover:    oklch(0.250 0.009 262);  /* #25282D */
-  --color-ink:         oklch(0.930 0.004 95);   /* #E8E6E1  14.1:1 (AAA) */
-  --color-ink-muted:   oklch(0.680 0.008 262);  /* #9BA0A6   6.6:1 (AA)  */
-  --color-rule:        oklch(0.300 0.008 262);  /* #33373C */
-  --color-accent:      oklch(0.780 0.120 62);   /* #EDA76A   9.1:1 (AAA) */
-  --color-accent-mark: oklch(0.700 0.140 58);   /* #D8874A */
-}
-
-/* ─── Base ────────────────────────────────────────────────────────── */
-:root            { color-scheme: light; }
-[data-theme="dark"] { color-scheme: dark; }   /* scrollbars, inputs nativos */
-
-html { scroll-behavior: smooth; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-
-body {
-  background: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  font-size: var(--text-body);
-  line-height: 1.7;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-/* Focus: nunca se suprime. Siempre --color-accent (AA). */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sharp);
-}
-
-::selection { background: var(--color-accent-mark); color: var(--color-bg); }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-```
-
-**Contraste verificado (WCAG 2.1):**
-
-| Par | Light | Dark |
-|---|---|---|
-| ink / bg | 13.2:1 AAA | 14.1:1 AAA |
-| ink-muted / bg | 5.1:1 AA | 6.6:1 AA |
-| ink-muted / bg-hover | 4.7:1 AA | 5.9:1 AA |
-| accent / bg | 6.3:1 AA | 9.1:1 AAA |
-| accent (focus ring) / bg | 6.3:1 ✔ ≥3:1 no-textual | 9.1:1 ✔ |
-| rule / bg | 1.3:1 — decorativo, nunca porta información |
-
-`--color-accent-mark` **jamás lleva texto** ni es el único indicador de un estado.
-
----
-
-## 3. Tipografía
-
-### Familias y carga
-
-```bash
-pnpm add @fontsource-variable/geist @fontsource-variable/jetbrains-mono
-```
-
-```ts
-// src/main.tsx — antes de importar los estilos propios
-import "@fontsource-variable/geist/index.css";        // wght 400–500 usados
-import "@fontsource-variable/jetbrains-mono/index.css";
-import "./styles/theme.css";
-```
-
-Solo subset `latin`. `font-display: swap` (default de fontsource). Sin CDN, sin `@import` de Google Fonts (rompería el build offline y añade una petición bloqueante).
-
-### La ley (una sola, sin excepciones)
-
-> **Si el dato es catalogable o lo produjo una máquina → mono.
-> Si lo escribió un humano para ser leído → sans.**
-
-Aplicación literal:
-
-| Mono | Sans |
-|---|---|
-| etiquetas de canaleta, nav, tags, fechas, `autor · fecha`, rutas, links `code ↗`/`demo ↗`, footer, empty states, **código** | h1, h2, h3, prosa, títulos de proyecto, cargo, nombre de empresa |
-
-### Desambiguación mono-dato vs mono-código (el agujero del concepto original)
-
-El código también es mono. Se distinguen por **tres señales simultáneas**, nunca por la familia:
-
-| | mono-**dato** (metadato) | mono-**código** (contenido) |
-|---|---|---|
-| color | `--color-ink-muted` | `--color-ink` |
-| caja | `text-transform: uppercase` + `tracking .09em` (solo etiquetas de canaleta) o normal para tags/fechas | siempre `lowercase`/literal, `tracking: 0` |
-| superficie | **ninguna** (sobre `--color-bg`) | **siempre** `--color-surface` + hairline |
-
-**Regla operativa:** el metadato nunca tiene fondo; el código siempre lo tiene. La superficie es la señal semántica.
-
-### Escala (7 escalones, cerrada)
-
-| Token | Tamaño / interlínea | Peso | Uso |
-|---|---|---|---|
-| `text-label` | 11px / 1.4, `.09em`, UPPER | mono 500 | etiqueta de canaleta (`PERFIL`, `STACK`) |
-| `text-meta` | 13px / 1.6 | mono 400 | tags, fechas, nav, links, footer |
-| `text-sm` | 14px / 1.65 | sans 400 | empresa, texto de apoyo |
-| `text-body` | 16px / 1.7, **68ch** | sans 400 | bio, body de proyecto/fragmento |
-| `text-h3` | 18px / 1.4 | sans 500 | título de fila, cargo |
-| `text-h2` | 24px / 1.3 | sans 500 | título de página de detalle |
-| `text-h1` | clamp(28→44px) / 1.1, `-.02em` | sans 500 | nombre en el hero |
-
-Sin cursivas. Sin 600/700 en ninguna parte: `<strong>` de markdown renderiza como **Geist 500**. Los headings de sección son `<h2>` reales, tipografiados como `text-label` (semántica correcta, jerarquía por retícula).
-
----
-
-## 4. Layout
-
-### Contenedor y retícula
-
-```css
-.page {                       /* un solo contenedor en todo el sitio */
-  max-width: var(--container-page);   /* 880px */
-  margin-inline: auto;
-  padding-inline: 24px;
-}
-@media (min-width: 768px) { .page { padding-inline: 40px; } }
-
-/* LA retícula. Gobierna TODAS las secciones y páginas. NUNCA colapsa. */
-.grid-spec {
-  display: grid;
-  grid-template-columns: var(--gutter-sm) 1fr;   /* 4.5rem 1fr — móvil */
-  column-gap: 16px;
-  align-items: start;
-}
-@media (min-width: 768px) {
-  .grid-spec {
-    grid-template-columns: var(--gutter-lg) 1fr; /* 7.5rem 1fr */
-    column-gap: 32px;
-  }
-}
-```
-
-**Presupuesto móvil (320px, el peor caso):** 320 − 48 (padding) = 272 útiles → 72 canaleta + 16 gap + **184px de contenido**. `text-label` a 11px con tracking `.09em` mide ~55px en `PERFIL` y ~62px en `STACK` → cabe con holgura. Etiquetas de **máximo 7 caracteres**, sin excepción. Si una etiqueta no cabe en 7 caracteres, se renombra el concepto, no se ensancha la canaleta.
-
-**Único breakpoint del sistema: `768px`.** No hay más.
-
-Cualquier bloque que no encaje en `etiqueta | contenido` (imagen ancha, code block largo) rompe explícitamente con `grid-column: 1 / -1` y lo declara en su componente. No hay ruptura implícita.
-
-### Ritmo vertical
-
-- Sección: `padding-block: 40px` (móvil) / `56px` (≥768px), separadas por `border-top: 1px solid var(--color-rule)`. **La regla es el separador; nunca hay margin doble.**
-- Hero: `padding-top: 64px` (móvil) / `96px`; `padding-bottom: 48px` / `64px`.
-- Fila de proyecto/fragmento: `padding-block: 16px`, `min-height: 56px` (target ≥44px), hairline inferior entre filas.
-- Prosa: separación entre párrafos `1em`.
-
-### Nav (estático, no sticky)
+Todo el sitio vive en una única columna estrecha. El armazón está en `src/App.tsx`, en el componente `Shell`, que envuelve el contenido en un solo contenedor centrado:
 
 ```
-alexparco                perfil · stack · exp · proyectos · fragmentos   [☀/☾]
-────────────────────────────────────────────────────────────────────── hairline
+<div className="relative mx-auto max-w-page px-5 sm:px-6">
+  <Header overlay={pathname === '/'} />
+  <main id="main" key={pathname} tabIndex={-1} className="enter outline-none">…</main>
+  <Footer />
+</div>
 ```
 
-- `padding-block: 20px`, hairline inferior, ancho de `.page`.
-- Izquierda: `alexparco` en mono 500, `--color-ink`, link a `/`.
-- Derecha: 5 anclas mono 400 (`text-meta`) + toggle de tema. Separador `·` en `--color-rule`.
-- **En móvil (<768px)**: el nav es dos filas. Fila 1: `alexparco` + toggle. Fila 2: las anclas en `overflow-x: auto; scrollbar-width: none;` con `scroll-snap`. **Sin hamburguesa. Sin menú. Nunca.**
-- Estado activo (scroll-spy): `color: var(--color-accent)` + `text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px`.
-- En rutas de detalle, ningún ancla está activa; se muestra un link mono `← volver` a la izquierda, bajo el nav.
-
-### Rutas
-
-> **Derogado por la v6.4.** El sitio es bilingüe y el idioma vive en la URL: hay un árbol
-> de rutas por idioma, con los segmentos traducidos (`/proyectos/:slug` ↔
-> `/en/projects/:slug`). Ver §0, "Bilingüe: el idioma vive en la URL". Los slugs de abajo
-> son además los del catálogo antiguo.
+`max-w-page` (≈ 42rem) fija el ancho de lectura; `mx-auto` lo centra y `px-5 sm:px-6` da el margen lateral. El orden vertical es siempre el mismo: **Header arriba, `<main>` con las rutas en medio, Footer abajo**. No hay dos paneles ni columnas laterales: es la disposición de un blog.
 
-| Ruta | Página |
-|---|---|
-| `/` | Home (hero + 5 secciones ancladas) |
-| `/proyectos/:slug` | Detalle de proyecto |
-| `/fragmentos/:slug` | Detalle de fragmento |
-| `*` | 404 mínimo: `404 — no existe esa ruta` en mono + `← inicio` |
-
-`slug = slugify(title)` → `spring-login`, `pokeapp`, `todoapp`, `task-api-typescript`, `expo-react-eas-apk-build`. Resolución por slug contra `WorksData` / `SnippetsData`; si no hay match → `<Navigate to="/404" replace />`.
-
-React Router 7 con `basename={import.meta.env.BASE_URL}`, que sigue a `base` de Vite. Desde la v6.6 `base` es `/` y el sitio se sirve en **alexparco.dev** (dominio propio, `public/CNAME`), no en `alexparco.github.io/portfolio/`. Para deep-links en GitHub Pages, el script `build` copia `dist/index.html` a `dist/404.html`, y `public/.nojekyll` evita que Pages se coma `assets/`.
-
----
-
-## 5. Componentes
-
-Todos en `src/components/`. TSX + clases Tailwind. Cero librerías de UI.
-
-### 5.1 `<SpecRow label content anchorId>` — el átomo del sistema
-
-Propósito: la retícula `etiqueta | contenido` como componente único. Todo lo demás la consume.
-
-```
-Anatomía:
-<section id={anchorId} class="grid-spec section">
-  <h2 data-spy-label class="text-label uppercase text-ink-muted">{label}</h2>
-  <div class="min-w-0">{children}</div>
-</section>
-```
-
-- `min-w-0` en la columna derecha es obligatorio (si no, un code block sin wrap revienta la grid).
-- `data-spy-label`: lo consume el scroll-spy (§7).
-- En móvil la etiqueta **sigue en la canaleta**. No hay variante apilada.
-
-### 5.2 `<Hero>`
-
-Propósito: identidad + los 3 metadatos que un reclutador busca en 5 segundos.
-
-```
-<h1>Alexander Parco Flores</h1>                    sans 500
-<p class="text-meta font-mono text-ink-muted">Desarrollador Fullstack · Lima, Perú</p>
-<dl class="grid-spec">                             ← la misma retícula
-  LUGAR   Lima, Perú
-  EXP     2 años
-  REDES   linkedin ↗  github ↗  email ↗  instagram ↗    ← mono, accent, underline
-</dl>
-```
-
-- `<dl>` con `<dt class="text-label">` en la canaleta y `<dd>` en la derecha. Semántica correcta.
-- **Rol corregido a `Desarrollador Fullstack`** (el dato `Fronted` es un typo y se arregla en origen).
-- Sin foto, sin avatar, sin blob decorativo.
-
-### 5.3 `<Experience>` — sección `EXP`
-
-```
-Frontend Developer                      may. 2023 — actualidad · 4 meses
-Zites Company
-───────────────────────────────────────────────────────────── hairline
-FullStack Developer                     ene. 2023 — actualidad · 7 meses
-PetroAmerica
-```
-
-- Cargo `text-h3` sans 500. Empresa `text-sm` sans, `--color-ink-muted`. Fecha `text-meta` mono muted, alineada a la derecha en ≥768px; en móvil **debajo del cargo**, alineada a la izquierda (no se comprime).
-- Orden: descendente por fecha de inicio.
-- **Los logos de empresa (`petroamerica.png`, `zites.svg`) NO se renderizan.** Decisión explícita, no un olvido: un logo es branding ajeno, no es un dato del CV; además obligaría a resolver logos oscuros sobre fondo oscuro con hacks (`invert`, chips blancos) que violan "cero superficies decorativas". Se elimina `src` de `ExperienceData`. Los archivos se borran de `public/`.
-- Se elimina `ModalExp.tsx` (un modal para mostrar un logo es la definición de ceremonia).
-
-### 5.4 `<Stack>` — sección `STACK`
-
-```
-TypeScript   JavaScript   Git   Java   Golang   Python   Linux
-```
-
-- Mono `text-meta`, `--color-ink-muted`, `display: flex; flex-wrap: wrap; gap: 8px 24px`.
-- **Sin píldoras, sin bordes, sin fondo, sin iconos SVG remotos.** Se elimina la dependencia de `devicon` en `raw.githubusercontent.com` (petición externa, no cacheable, se ve mal en dark). Un stack es una lista de palabras.
-- `stack.ts` se reduce a `export const StackData: string[]`.
-
-### 5.5 `<ProjectRow>` — la fila-índice (sustituye a las cards)
-
-**El componente más importante del sitio.** 4 proyectos en cards gritan "está vacío"; 4 proyectos en un índice se leen como un sumario completo.
-
-```
-Anatomía (≥768px):
-┌─────────────────────────────────────────────────────────────────────┐
-│ Spring-Login                        ReactJs Java Spring-Boot        │
-│ code ↗  demo ↗                                          oct. 2022   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-- El contenedor es **un `<article>`**, no un `<a>` — porque contiene links propios (`code`, `demo`) y anidar `<a>` es HTML inválido.
-- El título es el `<a>` al detalle, con **stretched-link**: `::after { position:absolute; inset:0; content:"" }` sobre el `article` (`position: relative`). Los links `code`/`demo` llevan `position: relative; z-index: 1` para quedar por encima. Resultado: fila entera clickable (target 100%×≥56px) **y** links directos al repo/demo accesibles sin entrar al detalle.
-- **`code ↗` y `demo ↗` son mono `text-meta` en `--color-accent`, siempre visibles.** `href[0]` = demo, `href[1]` = github. **Si el string está vacío o es `" "`, el link NO se renderiza** (bug corregido en origen: limpiar `works.ts`).
-- Tags: mono `text-meta` muted, `flex-wrap: wrap; justify-content: flex-end`. **Overflow: se renderizan como máximo 4 tags; si hay más, el cuarto se sustituye por `+n`.** En móvil los tags van en su propia línea bajo el título, alineados a la izquierda (nunca comprimidos a la derecha).
-- Fecha: mono muted, `Intl.DateTimeFormat("es", { month: "short", year: "numeric" })`. **Se elimina `moment`.**
-- Hover/focus: §6.
-
-### 5.6 `<ProjectDetail>` — `/proyectos/:slug`
-
-La evidencia **sobre el fold**:
-
-```
-← volver
-Spring-Login                                              ← h2, grid-column 1/-1
-Alexander Parco Flores · 28 de octubre de 2022            ← mono muted
-code ↗   demo ↗                                           ← mono accent, ARRIBA
-─────────────────────────────────────────────────────────
-TAGS      ReactJs  Java  Spring-Boot
-IMG       [ imagen enmarcada, hairline 1px, radius 2px ]
-NOTAS     prosa 68ch (react-markdown + remark-gfm)
-```
-
-- Los links de repo/demo van **antes** de la imagen y del body. Innegociable.
-- Imagen: `<figure>` con `border: 1px solid var(--color-rule); border-radius: 2px; background: var(--color-surface); padding: 8px`. `max-width: min(100%, {size}px)` respetando el campo `size` de los datos. `width`/`height` intrínsecos o `aspect-ratio` para evitar CLS. `loading="lazy"`, `decoding="async"`.
-- Fade-in **con el fix del cacheado**:
-
-```tsx
-const ref = useRef<HTMLImageElement>(null);
-const [loaded, setLoaded] = useState(false);
-useEffect(() => { if (ref.current?.complete) setLoaded(true); }, []);
-<img ref={ref} onLoad={() => setLoaded(true)} data-loaded={loaded || undefined} ... />
-```
-
-```css
-img { opacity: 0; transition: opacity var(--dur-image) var(--ease-out); }
-img[data-loaded] { opacity: 1; }
-```
-
-- Fecha larga: `Intl.DateTimeFormat("es", { dateStyle: "long" })`.
-
-### 5.7 `<SnippetDetail>` — `/fragmentos/:slug`
-
-Misma plantilla que el detalle de proyecto, sin imagen ni tags.
-
-- **Se elimina `EasBuild.tsx`** (componente Chakra hardcodeado) y los `console.log`. El contenido del fragmento pasa a `snippets.ts` como campo `body: string` en **markdown**, renderizado por el mismo `<Prose>` que los proyectos. El hardcode `<EasBuild />` desaparece del router.
-- Migración del contenido de EasBuild a markdown: párrafos + bloques ```` ```bash ```` / ```` ```json ```` + links a `expo.dev`. Es literalmente el mismo texto.
-
-### 5.8 `<Prose>` — el renderer de markdown (el agujero tapado)
-
-`react-markdown` + `remark-gfm`, con un mapa de componentes explícito. **Todo el markdown está dentro del sistema, sin excepciones:**
-
-```css
-.prose            { max-width: var(--container-prose); }  /* 68ch */
-.prose p          { margin-block: 0 1em; }
-.prose a          { color: var(--color-accent);
-                    text-decoration: underline; text-underline-offset: 3px;
-                    text-decoration-thickness: 1px; }
-.prose strong     { font-weight: 500; }                    /* nunca 700 */
-.prose em         { font-style: normal; color: var(--color-ink-muted); } /* sin cursivas */
-
-/* Inline code — mono-CÓDIGO: siempre superficie, nunca uppercase */
-.prose :not(pre) > code {
-  font-family: var(--font-mono);
-  font-size: 0.875em;
-  color: var(--color-ink);
-  background: var(--color-surface);
-  border-radius: var(--radius-sharp);
-  padding: 0.1em 0.35em;
-}
-
-/* Code block — rompe la retícula explícitamente y hace scroll propio */
-.prose pre {
-  grid-column: 1 / -1;
-  font-family: var(--font-mono);
-  font-size: var(--text-meta);
-  line-height: 1.7;
-  color: var(--color-ink);
-  background: var(--color-surface);
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-sharp);
-  padding: 16px;
-  margin-block: 24px;
-  overflow-x: auto;            /* el body NUNCA scrollea horizontal */
-  max-width: 100%;
-  tab-size: 2;
-}
-.prose pre code { background: none; padding: 0; font-size: inherit; }
-
-/* Listas: marcador mono muted, sin bullets de sistema */
-.prose ul, .prose ol { padding-left: 1.25em; margin-block: 0 1em; }
-.prose li            { margin-block: 0.25em; }
-.prose li::marker    { color: var(--color-ink-muted);
-                       font-family: var(--font-mono); font-size: 0.8125rem; }
-
-/* Tabla: hairlines, cero zebra, cero superficie */
-.prose table   { width: 100%; border-collapse: collapse; font-size: var(--text-sm);
-                 display: block; overflow-x: auto; }
-.prose th      { font: 500 var(--text-label)/1.4 var(--font-mono);
-                 text-transform: uppercase; letter-spacing: 0.09em;
-                 color: var(--color-ink-muted); text-align: left; }
-.prose th, .prose td { padding: 10px 12px 10px 0;
-                       border-bottom: 1px solid var(--color-rule); }
-
-/* Blockquote: una sola regla vertical, sin superficie, sin comillas */
-.prose blockquote {
-  border-left: 2px solid var(--color-rule);
-  padding-left: 16px; margin-block: 24px;
-  color: var(--color-ink-muted);
-}
-.prose h2, .prose h3 { font-weight: 500; margin-block: 32px 8px; }
-```
-
-**Sin syntax highlighting.** Ni Shiki ni Prism: el código se muestra en `--color-ink` monocromo. Coherente con "un solo acento" y ahorra ~200 KB. El resaltado es coloreado decorativo; la ficha técnica no lo necesita.
-
-### 5.9 `<Nav>`, `<Footer>`, `<ThemeToggle>`
-
-**Nav** — §4. `<nav aria-label="Principal">`, anclas `<a href="#perfil">` con `aria-current="true"` en la activa.
-
-**Footer** — una línea, hairline superior, mono `text-meta` muted, `padding-block: 32px`:
-```
-Lima, Perú · 2026 · alexparco16@gmail.com
-```
-El email es un `mailto:` en `--color-accent`.
-
-**ThemeToggle** — `<button>` de 44×44px, `aria-label="Cambiar a tema oscuro"` (dinámico), contenido: `☀` / `☾` en mono (`text-meta`, `--color-ink-muted`; en hover → `--color-accent`). Sin animación de icono, sin switch, sin track deslizante.
-
-```ts
-// Inline en index.html, ANTES del bundle — evita el flash de tema (FOUC).
-(function () {
-  var t = localStorage.getItem("theme");
-  if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  document.documentElement.dataset.theme = t;
-})();
-```
-Estado en `<html data-theme>`, persistido en `localStorage.theme`. Dos estados (`light`/`dark`); el primer valor lo decide el sistema. Sin estado "auto" visible: es complejidad sin recompensa para un portfolio.
-
----
-
-## 6. Estados
-
-### 6.1 Fila (`ProjectRow`, `SnippetRow`) — hover / focus-within
-
-```css
-.row { position: relative; transition: background-color var(--dur-state) linear; }
-
-/* La marca de 2px: ::before absoluto. CERO layout shift. */
-.row::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  left: -12px;                 /* invade el gap, no desplaza el contenido */
-  width: 2px;
-  background: var(--color-accent-mark);
-  opacity: 0;
-  transition: opacity var(--dur-state) linear;
-}
-.row:hover, .row:focus-within        { background: var(--color-bg-hover); }
-.row:hover::before,
-.row:focus-within::before            { opacity: 1; }
-.row:hover .row-title                { color: var(--color-accent); }
-```
-
-- **Nada se mueve**: no hay `transform`, ni `translate`, ni `scale`.
-- El estado se comunica por **dos señales redundantes** (fondo + marca), así que la marca de bajo contraste nunca es el único indicador.
-- **Teclado === ratón**: `:focus-within` produce exactamente el mismo aspecto que `:hover`.
-
-### 6.2 Links
-
-```css
-a { color: var(--color-accent); text-decoration: none;
-    transition: color var(--dur-state) linear; }
-a:hover { text-decoration: underline; text-underline-offset: 4px;
-          text-decoration-thickness: 1px; }
-```
-Links mono (`code ↗`, `demo ↗`, redes): idéntico. `:active` → `opacity: 0.7`, sin transición.
-
-### 6.3 Focus-visible
-
-`outline: 2px solid var(--color-accent); outline-offset: 2px`. **Nunca `outline: none`.** Instantáneo, sin transición. Visible en light y dark (6.3:1 / 9.1:1).
-
-### 6.4 Estados vacíos (especificados, no improvisados)
-
-| Caso | Qué se ve |
-|---|---|
-| **0 fragmentos** | La sección `FRAGMENTOS` **no se renderiza en absoluto** (ni etiqueta, ni hairline, ni hueco) y el ancla desaparece del nav. Una sección vacía entre dos hairlines se lee como un bug. Regla: `if (SnippetsData.length === 0) return null`. |
-| **0 proyectos** | Idem. (No va a pasar, pero la regla es la misma y el código la implementa.) |
-| **Proyecto sin `demo`** | El link `demo ↗` simplemente no existe. Sin placeholder, sin `demo (próximamente)`, sin link muerto. |
-| **Proyecto sin imagen** | El bloque `IMG` completo (etiqueta + figure) no se renderiza. |
-| **Fragmento sin `body`** | El detalle no se enlaza: la fila no es clickable, el título va en `--color-ink-muted` con un tag mono `borrador` a la derecha. |
-| **Ruta inexistente** | `404 — no existe esa ruta` en mono muted + `← inicio` en accent. Nada más. |
-| **Imagen que falla** | `onError` → se oculta el `<figure>` entero. Sin icono de imagen rota. |
-
----
-
-## 7. Motion
-
-**Cinco animaciones en todo el sitio. Ninguna más. Cero librerías — `framer-motion` se desinstala.**
-
-| # | Qué | Cómo |
-|---|---|---|
-| 1 | Hover/focus de fila y link | `transition: background-color 120ms linear, color 120ms linear, opacity 120ms linear`. Sin `transform`. |
-| 2 | Entrada de ruta | `@keyframes enter { from { opacity:0; transform: translateY(4px) } to { opacity:1; transform:none } }` — `160ms var(--ease-out)`, **una sola vez**, en el contenedor de página, con `key={location.pathname}`. |
-| 3 | Foco | Instantáneo. Sin transición. |
-| 4 | Imagen del detalle | `opacity 0→1` en `200ms`, con el fix de `complete` (§5.6). |
-| 5 | **Marginalia viva (el gesto firmado)** | La etiqueta de la sección visible pasa de `--color-ink-muted` a `--color-accent` en `120ms linear`. Nada más cambia. |
-
-**Implementación del gesto firmado:**
-
-```ts
-// useScrollSpy.ts — IntersectionObserver, cero dependencias
-const observer = new IntersectionObserver(
-  (entries) => { /* la entry visible con mayor intersectionRatio gana */ },
-  { rootMargin: "-45% 0px -45% 0px", threshold: 0 }
-);
-// La sección activa recibe data-active en su <section>; el CSS hace el resto:
-```
-
-```css
-[data-spy-label]              { color: var(--color-ink-muted);
-                                transition: color var(--dur-state) linear; }
-section[data-active] [data-spy-label],
-section:focus-within [data-spy-label] { color: var(--color-accent); }
-```
-
-Y el nav refleja el mismo estado (`aria-current`). La banda es la franja central del viewport (10% de alto), así que en móvil **también funciona** — es el único portfolio donde la canaleta de metadatos te dice dónde estás.
-
-`prefers-reduced-motion: reduce` → las 5 se anulan con el bloque global de §2 (`duration: 0.01ms`). El estado final se aplica al instante y **todo sigue siendo perceptible**, porque cada señal es de color o superficie, nunca de movimiento.
-
-**Prohibido:** parallax, scroll-reveal, stagger, skeletons, cursor custom, magnetic buttons, texto que se escribe solo, `blur` de fondo.
-
----
-
-## 8. Accesibilidad — reglas no negociables
-
-1. **`:focus-visible` nunca se suprime.** Ring de 2px en `--color-accent` (≥6.3:1), `offset: 2px`. Cualquier PR que escriba `outline: none` sin reemplazo se rechaza.
-2. **Target táctil ≥ 44px** en filas, links del nav y toggle de tema.
-3. **Ningún estado se comunica solo con color.** Hover = fondo + marca. Nav activo = color + `underline` + `aria-current`. Spy = color + `aria-current` en el nav.
-4. **Contraste:** texto ≥ 4.5:1, no-textual ≥ 3:1. Verificado en §2 para light y dark.
-5. **Landmarks:** `<header>` con `<nav aria-label="Principal">`, `<main id="main">`, `<footer>`. **Skip-link** `Saltar al contenido` como primer elemento focusable (`sr-only` hasta `:focus`).
-6. **Jerarquía de headings sin saltos:** un `<h1>` por página. Las etiquetas de canaleta son `<h2>` reales (tipografiados como label, no `sr-only`). En el detalle, el título es `<h1>`.
-7. **`<a>` nunca dentro de `<a>`.** La fila usa stretched-link (§5.5).
-8. **`lang="es"`** en `<html>`. Los tramos en inglés (`ReactJS`, `Spring-Boot`) son nombres propios y no necesitan `lang`.
-9. **Links externos:** `target="_blank" rel="noopener noreferrer"`, y el `↗` es `aria-hidden`; el nombre accesible lo da el texto (`code`, `demo`) más un `<span class="sr-only">(se abre en una pestaña nueva)</span>`.
-10. **Imágenes:** `alt` descriptivo (`Captura de la pantalla de login de Spring-Login`). Nunca `alt=""` en imágenes de contenido.
-11. **`prefers-reduced-motion`** anula las 5 animaciones. Sin excepciones.
-12. **`color-scheme`** declarado en ambos temas (scrollbars y controles nativos correctos).
-13. **Navegable 100% por teclado**, en el orden visual del DOM. Sin trampas de foco: no hay modales (se elimina `ModalExp`).
-14. **El body nunca scrollea horizontalmente.** Todo contenido ancho (`pre`, `table`) scrollea dentro de su propio `overflow-x: auto`.
-
----
-
-## 9. Wireframes ASCII
-
-### 9.1 Home — móvil 375px (**la forma primaria**; la canaleta no colapsa)
-
-```
-┌───────────────────────────────────┐
-│ alexparco                     ☀   │
-│ perfil·stack·exp·proyectos·frag→  │ ← scroll-x, sin hamburguesa
-├───────────────────────────────────┤ ← hairline
-│                                   │
-│  Alexander Parco                  │  h1 clamp
-│  Flores                           │
-│  Desarrollador Fullstack ·        │  mono muted
-│  Lima, Perú                       │
-│                                   │
-│ LUGAR │ Lima, Perú                │  ← la retícula SIGUE VIVA
-│ EXP   │ 2 años                    │     canaleta 4.5rem · gap 16px
-│ REDES │ linkedin ↗  github ↗      │
-│       │ email ↗  instagram ↗      │
-├───────────────────────────────────┤
-│ PERFIL│ Soy un desarrollador web  │  ← etiqueta OCRE (estás aquí)
-│       │ con más de 2 años de      │
-│       │ experiencia. Mi enfoque   │
-│       │ es desarrollar software   │
-│       │ escalable con metodolo-   │
-│       │ gías ágiles.              │
-├───────────────────────────────────┤
-│ STACK │ TypeScript  JavaScript    │
-│       │ Git  Java  Golang         │
-│       │ Python  Linux             │
-├───────────────────────────────────┤
-│ EXP   │ Frontend Developer        │
-│       │ Zites Company             │
-│       │ may. 2023 — actual · 4 m  │  ← fecha DEBAJO en móvil
-│       │ ────────────────────────  │
-│       │ FullStack Developer       │
-│       │ PetroAmerica              │
-│       │ ene. 2023 — actual · 7 m  │
-├───────────────────────────────────┤
-│PROYEC.│▏Spring-Login              │ ← marca 2px + bg-hover
-│       │ ReactJs Java Spring-Boot  │
-│       │ code ↗            oct 22  │
-│       │ ────────────────────────  │
-│       │ PokeApp                   │
-│       │ Go ReactJS TypeScript     │
-│       │ code ↗            oct 22  │
-│       │ ────────────────────────  │
-│       │ TodoApp                   │
-│       │ ReactJS TypeScript        │
-│       │ code ↗ demo ↗     may 22  │  ← el demo, en el listado
-│       │ ────────────────────────  │
-│       │ Task Api - TypeScript     │
-│       │ NodeJs TypeScript         │
-│       │ code ↗            ene 23  │
-├───────────────────────────────────┤
-│FRAGM. │ Expo React | eas APK build│
-│       │ React Native      mar 23  │
-├───────────────────────────────────┤
-│ Lima, Perú · 2026 ·               │
-│ alexparco16@gmail.com             │
-└───────────────────────────────────┘
-```
-
-### 9.2 Home — desktop ≥768px (880px máx)
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│  alexparco            perfil · stack · exp · proyectos · fragmentos   ☀  │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   Alexander Parco Flores                                                 │  h1
-│   Desarrollador Fullstack · Lima, Perú                                   │  mono muted
-│                                                                          │
-│   LUGAR      │ Lima, Perú                                                │
-│   EXP        │ 2 años                                                    │
-│   REDES      │ linkedin ↗   github ↗   email ↗   instagram ↗             │
-├──────────────────────────────────────────────────────────────────────────┤
-│   PERFIL     │ Soy un desarrollador web con más de 2 años de experiencia │  ← OCRE si
-│  (7.5rem)    │ en programación. Mi enfoque principal es desarrollar      │    estás aquí
-│              │ software altamente escalable mediante la aplicación de    │
-│              │ metodologías ágiles. Además, tengo habilidades en la      │  68ch
-│              │ resolución de problemas, la gestión de proyectos y la     │
-│              │ capacidad de trabajar en equipo.                          │
-├──────────────────────────────────────────────────────────────────────────┤
-│   STACK      │ TypeScript  JavaScript  Git  Java  Golang  Python  Linux  │
-├──────────────────────────────────────────────────────────────────────────┤
-│   EXP        │ Frontend Developer            may. 2023 — actual · 4 meses│
-│              │ Zites Company                                             │
-│              │ ───────────────────────────────────────────────────────── │
-│              │ FullStack Developer           ene. 2023 — actual · 7 meses│
-│              │ PetroAmerica                                              │
-├──────────────────────────────────────────────────────────────────────────┤
-│   PROYECTOS  │ Spring-Login                   ReactJs Java Spring-Boot   │
-│              │ code ↗                                          oct. 2022 │
-│              │ ───────────────────────────────────────────────────────── │
-│             ▏│ PokeApp                        Go ReactJS TypeScript      │ ← hover:
-│              │ code ↗                                          oct. 2022 │   marca+bg
-│              │ ───────────────────────────────────────────────────────── │
-│              │ TodoApp                        ReactJS TypeScript         │
-│              │ code ↗  demo ↗                                  may. 2022 │
-│              │ ───────────────────────────────────────────────────────── │
-│              │ Task Api - TypeScript          NodeJs TypeScript          │
-│              │ code ↗                                          ene. 2023 │
-├──────────────────────────────────────────────────────────────────────────┤
-│   FRAGMENTOS │ Expo React | eas APK build                   React Native │
-│              │                                                 mar. 2023 │
-├──────────────────────────────────────────────────────────────────────────┤
-│  Lima, Perú · 2026 · alexparco16@gmail.com                               │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-*(No existe una página `/proyectos` de listado. Este listado ES el listado. Cuando haya >8 proyectos se promueve a ruta propia — y solo entonces.)*
-
-### 9.3 Detalle de proyecto — `/proyectos/spring-login`
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│  alexparco            perfil · stack · exp · proyectos · fragmentos   ☀  │
-├──────────────────────────────────────────────────────────────────────────┤
-│  ← volver                                                                │  mono accent
-│                                                                          │
-│  Spring-Login                                                            │  h1
-│  Alexander Parco Flores · 28 de octubre de 2022                          │  mono muted
-│  code ↗                                                                  │  ← SOBRE EL FOLD
-├──────────────────────────────────────────────────────────────────────────┤
-│   TAGS       │ ReactJs   Java   Spring-Boot                              │
-├──────────────────────────────────────────────────────────────────────────┤
-│   IMG        │ ┌──────────────────────┐                                  │
-│              │ │                      │  hairline 1px, radius 2px,       │
-│              │ │   spring.png         │  bg = --color-surface,           │
-│              │ │   max-width: 220px   │  padding 8px, fade-in 200ms      │
-│              │ └──────────────────────┘                                  │
-├──────────────────────────────────────────────────────────────────────────┤
-│   NOTAS      │ Este proyecto tiene como objetivo mostrar cómo funciona   │
-│              │ la dependencia Spring Boot Security mediante la           │  68ch
-│              │ implementación de un sistema de autenticación y           │
-│              │ autorización para el inicio de sesión y el registro de    │
-│              │ usuarios.                                                 │
-│              │                                                           │
-│              │ ┌─────────────────────────────────────────────────────┐   │ ← code block:
-│              │ │ mvn spring-boot:run                                 │   │   surface +
-│              │ └─────────────────────────────────────────────────────┘   │   hairline,
-│              │                                                           │   scroll-x
-├──────────────────────────────────────────────────────────────────────────┤
-│  Lima, Perú · 2026 · alexparco16@gmail.com                               │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-El detalle de fragmento (`/fragmentos/expo-react-eas-apk-build`) es idéntico sin los bloques `TAGS` e `IMG`: h1 + `autor · fecha` + `NOTAS` con el markdown completo (párrafos + code blocks + links).
-
----
-
-## 10. Limpieza obligatoria (parte del spec, no opcional)
-
-**Desinstalar:** `@chakra-ui/react`, `@chakra-ui/icons`, `@emotion/react`, `@emotion/styled`, `framer-motion`, `moment`, `react-icons`, `@dnd-kit/core`, `@dnd-kit/sortable` (no se usan para nada).
-**Instalar:** `tailwindcss@4`, `@tailwindcss/vite`, `@fontsource-variable/geist`, `@fontsource-variable/jetbrains-mono`.
-**Mantener:** `react-markdown`, `remark-gfm`, `gh-pages`.
-
-**Borrar:** `src/pages/snippetDetail/details/EasBuild.tsx`, `src/components/Experience/ModalExp.tsx`, `src/pages/works.tsx`, `src/pages/snippets.tsx`, `src/components/WorksGrid/`, `src/components/SnippetsGrid/`, `src/components/Work/`, `src/components/snippet/`, `src/App.css`, `public/petroamerica.png`, `public/zites.svg`.
-
-**Arreglar en los datos (`src/data/`):**
-- `experience.ts`: `Fronted Developer` → `Frontend Developer`; eliminar `src` y `id`.
-- `works.ts`: eliminar los `href: [""]` vacíos (usar `demo?: string; repo?: string`); añadir `slug`; `date` en formato ISO (`2022-10-28`).
-- `snippets.ts`: añadir `slug`, `tags: string[]` y `body: string` (markdown, con el contenido migrado de EasBuild).
-- `stack.ts`: `string[]` plano, sin URLs remotas.
-- Eliminar todos los `console.log`.
+Detalles del shell, todos en `src/App.tsx`:
+
+- **Skip-link**: un `<a href="#main">` visualmente oculto (`sr-only`) que aparece al recibir foco, para saltar la navegación con teclado.
+- **`key={pathname}` en `<main>`**: fuerza a React a remontar el `<main>` en cada cambio de ruta, de modo que la animación de entrada (`.enter`) se dispare en cada página.
+- **`tabIndex={-1}` en `<main>`**: sin esto, el skip-link en Safari cambia el hash pero no mueve el foco.
+- **`<Ball />`**: queda **fuera** del `<div>` de la columna, porque es un elemento flotante (el sol) que se mueve por toda la pantalla, no contenido de la columna.
+
+**Trampa:** el `Header` en la portada es `overlay` y se saca del flujo con `absolute inset-x-0 top-0`, replicando por su cuenta el mismo `mx-auto max-w-page px-5 sm:px-6`. Si cambias el ancho de la columna, hay que tocarlo en dos sitios: el `<div>` del shell y el `<header>` en modo overlay.
+
+### 2.2 Rutas
+
+Las rutas se declaran en `src/App.tsx`, dentro de `<Routes>`:
+
+| Ruta | Elemento | Origen |
+|------|----------|--------|
+| `/` | `Home` | importado directo (bundle inicial) |
+| `/about` | `About` | diferido |
+| `/projects/:slug` | `ProjectDetail` | diferido |
+| `/notes/:slug` | `SnippetDetail` | diferido |
+| `/lab` | `LabPeces` | diferido, no enlazado desde ningún sitio |
+| `*` | `NotFound` | bundle inicial |
+
+Los **segmentos van SIEMPRE en inglés** (`projects`, `notes`, `about`) aunque la página se lea en castellano: *"El idioma no entra en la ruta."* Cada pieza tiene **una sola URL**, compartida por ambos idiomas; el idioma se resuelve aparte (localStorage → navegador), no en la ruta. Por eso `DocumentMeta` no emite `<link rel="alternate" hreflang>`: solo tendrían sentido si cada idioma tuviera su propia URL, y aquí no la tiene.
+
+Los enlaces internos no escriben las rutas a mano: usan helpers de `src/i18n/lang` (`rutaProyecto`, `rutaNota`, `RUTA_INICIO`).
+
+**`/lab`** es un banco de pruebas para el diseño del "pez", no enlazado desde ninguna parte; se llega escribiendo la URL. Va en diferido para no pesar en el bundle inicial y su carpeta `src/lab/` se borra entera cuando se decida.
+
+**`404`**: cualquier ruta no reconocida cae en `*` → `NotFound`, que muestra un `404`, un titular (`t('noExiste')`) y un enlace de vuelta al inicio.
+
+### 2.3 La portada (`src/pages/Home.tsx`)
+
+El orden de la portada, de arriba abajo:
+
+1. **Hero** (`<Hero />`): la foto/cabecera sobre la que flota el header en modo overlay.
+2. **Intro**: un `<section>` con la entradilla (`profile.intro`) y una lista de enlaces sociales + el CV. Lleva `-mt-6` a propósito para que la entradilla suba hasta la cola de la máscara del hero y foto y texto se lean como una sola pieza.
+3. **Proyectos** (`Section id="proyectos"`): lista de `projects`, cada uno con título, año (`formatYear`) y resumen, enlazando al detalle vía `rutaProyecto(p.slug)`.
+4. **Notas** (`Section id="notas"`): lista de `snippets` **ordenados por fecha, la más reciente primero**. El orden se calcula una sola vez a nivel de módulo: `const notasPorFecha = [...snippets].sort((a, b) => b.date.localeCompare(a.date))`. Los borradores (`s.draft`) se pintan atenuados y sin enlace.
+5. **Experiencia** (`Section id="experiencia"`): lista compacta de `experience` (rango de años + empresa + rol) y, al final, un enlace **`/about`** con `t('masSobreMi')`.
+
+**El porqué del orden y del reordenamiento**: las notas se leen como un blog (lo reciente arriba), pero **los proyectos NO se reordenan**: su orden en `projects/index.ts` es deliberado (producción antes que herramientas). Es decir, notas = cronológico automático; proyectos = curado a mano.
+
+### 2.4 La página `/about` (`src/pages/About.tsx`)
+
+Orden de `About`: enlace "volver" a `/`; título `h1` con `t('sobreMi')`; **bio** (`profile.bio` traducida, partida en párrafos por dobles saltos de línea); **experiencia detallada** (a diferencia de la portada, aquí cada puesto trae empresa, rol, rango de fechas, un resumen y una lista de `highlights`); **educación** (institución, programa, estado, rango de fechas); **contacto** (los enlaces sociales —el email como texto plano, sin el prefijo `mailto:`— más el enlace de descarga del CV).
+
+### 2.5 Rendimiento (lo sutil vive en `App.tsx`)
+
+El objetivo: que al hacer clic en un proyecto o nota la página aparezca al instante, aunque su código sea pesado.
+
+**Por qué diferir.** Las páginas de detalle arrastran `react-markdown` (~156 kB). Solo `Home` entra en el bundle inicial; `ProjectDetail`, `SnippetDetail` y `About` se cargan en chunks diferidos.
+
+**Por qué `React.lazy` a secas no basta.** Aunque el módulo ya esté descargado, `lazy` suspende al menos un microtick, y en cuanto React 19 muestra un fallback lo mantiene un mínimo de ~300 ms para no parpadear. Medido: skeleton + ~400 ms de espera con el código ya en el navegador.
+
+**La solución: `diferida()`.** Es un envoltorio sobre `lazy` que guarda el componente ya resuelto en una variable de módulo (`let lista`). Expone dos cosas:
+
+- `precargar()`: importa el chunk y guarda el componente en `lista`.
+- `Pagina`: un componente que, en el render, mira `lista`. Si ya está cargado, **pinta el componente directamente y de forma síncrona** (`return C ? <C {...props} /> : <Perezosa {...props} />`); solo si aún no está, cae en la versión `lazy` (`Perezosa`) que sí suspende. Así se esquiva por completo el fallback de ~300 ms cuando el código ya está.
+
+**La precarga en segundo plano.** `usePrecarga()`, invocado en `Shell`, llama a `precargar()` de las tres páginas diferidas *cuando el navegador está libre*: usa `requestIdleCallback(precargar, { timeout: 2000 })`. Así, para cuando el usuario hace clic, el chunk ya suele estar descargado y `Pagina` lo pinta directo.
+
+**Trampa (Safari):** Safari no tiene `requestIdleCallback`. Por eso hay un fallback a `setTimeout(precargar, 1000)`. Sin ese fallback, en Safari no se precargaría nada y cada clic pasaría por el `lazy` con su espera.
+
+**`useTransitions={false}` en el `BrowserRouter`.** Por defecto React Router 7 navega dentro de `startTransition`, y en una transición React se queda pintando la **página vieja, sin dar señal**, hasta que llega el código de la nueva (medido: ~1 s en 4G sin precarga). Desactivando la transición, el `<Suspense>` puede mostrar el skeleton en cuanto hay que esperar; y si la página ya estaba precargada, no hay espera. Es decir: `useTransitions={false}` es lo que hace que el skeleton aparezca al instante en vez de dejar la pantalla congelada.
+
+**El skeleton con retraso** (`src/components/PageSkeleton.tsx`). El fallback del `<Suspense>` es `<PageSkeleton />`. La clase `.skeleton` entra con **150 ms de retraso** para no parpadear en cargas rápidas. Con la precarga lo normal es que el contenido llegue antes y el skeleton no se vea nunca; solo aparece cuando la espera es real (red lenta, o clic antes de que termine la precarga). Sus medidas replican las de `ArticleHead` para que al llegar el contenido no salte nada (layout shift cero).
+
+Complementos de navegación, también en `App.tsx`:
+
+- **`ScrollToTop`**: al cambiar de ruta salta al tope con `behavior: 'instant'`. Si la URL trae hash (p. ej. `/#notas` desde otra página), reintenta durante unos frames con `requestAnimationFrame` hasta que la sección monta, y entonces sí hace scroll suave.
+- **`DocumentMeta`**: mantiene al día `<html lang>`, `document.title` y la meta `description` según el idioma, y persiste el idioma en `localStorage`. `lang` no es cosmético: decide la voz del lector de pantalla.
+
+### 2.6 Header, Footer, Section
+
+**`Header`** (`src/components/Header.tsx`). Una sola línea: el nombre "Alexander Parco" a la izquierda (enlace a `RUTA_INICIO`) y la navegación a la derecha (`NAV`: `/#proyectos`, `/#notas`, `/about`, más el `LangToggle`). Sin caja ni filete, porque en una columna de 42rem cualquier marco compite con el contenido.
+
+- **Variante `overlay`** (prop booleana, por defecto `false`): en la portada (`overlay={pathname === '/'}`) el header **flota sobre la foto del hero**. Se saca del flujo con `absolute inset-x-0 top-0 z-10` y repite el centrado de la columna; usa tonos "cream" para leerse sobre la foto. Sin `overlay`, es un header normal en el flujo, con tonos "ink".
+- Los `NavLink` con ancla (`#`) no se marcan activos: la comprobación `!item.to.includes('#')` evita que los enlaces con hash aparezcan activos por toda la portada.
+
+**`Footer`** (`src/components/Footer.tsx`). Separado con `mt-24` y un filete superior. Contiene el copyright con el año y la ubicación, y la lista de enlaces sociales (externos con `target="_blank"` + `rel="noopener noreferrer"`). Además es la **"portería" del sol** (`Ball.tsx`): tiene `data-ball-goal` y escucha el evento `ball:goal`; si el sol cae ahí, aparece un mensaje premio con email y CV. Es un extra para quien juega, no contenido esencial: el mismo email y CV están en la portada y en `/about`.
+
+**`Section`** (`src/components/Section.tsx`). Un apartado de portada: un `<section>` con `id` (para el scroll por hash) y un rótulo `<h2>` pequeño y discreto (`text-ink-faint`) sobre el contenido. Aporta el espaciado superior (`mt-16`) y `scroll-mt-8` para que el título no quede pegado al borde al saltar por ancla. Lo usan tanto `Home` como `About`.
+
+
+## 3. La portada: el hero, el sol lanzable y el nombre vivo
+
+La portada es la pieza central: una foto a sangre, un nombre en crema encima y un "sol" que se puede agarrar y lanzar por toda la pantalla hasta que choca con las letras. Nada de esto es adorno suelto: los tres componentes (`Hero`, `Ball`, `HeroName`) se coordinan a través de un registro compartido en `src/lib/sol.ts`, sin estado de React, escribiendo variables CSS 60 veces por segundo.
+
+### 3.1. El hero
+
+El contenedor es un `<section>` que **rompe la columna** con `mx-[calc(50%-50vw)]` (`src/components/Hero.tsx`). En vez de sacar la portada fuera del `<main>`, se queda como una página más dentro del contenedor y estira sus márgenes negativos hasta los bordes del viewport. El comentario del archivo lo explica: así "el shell no necesita saber nada" y la cabecera puede flotar encima sobre el cielo de la foto. Su alto es fluido: `h-[clamp(460px,82vh,820px)]` con `overflow-hidden`.
+
+La foto es `hero.jpg`, cargada desde `import.meta.env.BASE_URL`, a `object-cover object-[center_58%]` para encuadrar hacia abajo del centro, con `fetchPriority="high"` y `decoding="async"` porque es lo primero que se ve.
+
+**La máscara que la disuelve por abajo** vive en `.hero-fade` (`theme.css`): una `mask-image` con `linear-gradient(to bottom, #000 80%, transparent 100%)`. Es decir, la imagen es opaca hasta el 80% de su alto y de ahí al 100% se desvanece a transparente, fundiéndose con el fondo de la página. **Trampa:** por eso el bloque del nombre se coloca dentro del 80% superior (con `pb-[24%]`); si cayera en el tramo disuelto, quedaría sin foto detrás.
+
+**El velo** es `.hero-veil`: dos gradientes verdosos muy oscuros (`oklch(0.12 0.01 155 / …)`), uno bajando desde arriba (para que la navegación en crema se lea sobre el cielo) y otro subiendo desde abajo (para que el nombre en crema tenga contraste sobre la foto). No tiñe el centro de la foto, solo los bordes donde va texto claro.
+
+**El texto encima va en `cream`, no en `ink`**: el color del texto depende de la foto, no del fondo del sitio. Arriba del nombre, en fuente mono, va rol y ubicación.
+
+**El ancla `#sol`** es un `<span>` vacío y `aria-hidden` posicionado sobre el horizonte: `top-[21%] left-[70%]` en móvil, `sm:top-[14%] sm:left-[72%]` en desktop. Ahí descansa el sol antes de que nadie lo toque; `Ball` lo lee por `getElementById('sol')`.
+
+**La entrada** es `.hero-img` con `animation: hero-in 1.2s`: el keyframe `hero-in` va de `opacity:0; scale(1.04)` a opacidad plena sin transformar. Es el fundido con un leve deszoom.
+
+### 3.2. El sol (`src/components/Ball.tsx`)
+
+El sol del paisaje hecho objeto: un círculo con su propio resplandor que se agarra y se lanza. Es un `.ball` (`theme.css`): `position:fixed`, 30px, `border-radius:9999px`, un `radial-gradient` con el foco de luz descentrado (`circle at 36% 34%`) y dos `box-shadow` que son su halo. Empieza `visibility:hidden` y lo mueve JS con `transform` (nunca con `top/left`).
+
+Toda la física corre por refs y **un solo `requestAnimationFrame`, sin estado de React**: re-renderizar un componente 60 veces por segundo no tiene sentido. En `import.meta.env.DEV` expone el estado en `window.__sol` para inspeccionarlo.
+
+Constantes de la física: `R=15` (radio real; el CSS pinta 30px = 2·R), `G=2400` px/s² de gravedad, `E=0.72` de restitución del rebote, `MAX_V=4200` de velocidad máxima.
+
+**Los cuatro estados** (`type Mode`):
+
+- **`docked`**: pegado al ancla `#sol`. Cada frame lee el rect del ancla y se centra en él, así que **se desplaza con el scroll de la página**. Solo se muestra si estás en la home (`pathname === '/'`) y existe el ancla; fuera de la portada se oculta. En este estado lleva `data-docked`, que dispara el latido `ball-glow`.
+- **`drag`**: sigue al puntero. Cada `pointermove` reposiciona el sol y guarda muestras `{x,y,t}` (máximo 8) para calcular después la velocidad de lanzamiento.
+- **`free`**: física completa. Corre `step(dt)` y luego `touch()`.
+- **`rest`**: quieto donde cayó. En el suelo se queda en el viewport aunque cambies de página; sentado sobre un sólido, se queda **pegado a la letra** y se mueve con el scroll (ver 3.2.3).
+
+#### 3.2.1. La física (`step`)
+
+Cada frame: gravedad (`vy += G·paso`), un rozamiento aéreo suave en X (`vx *= 1 - 0.25·paso`) y avance por integración de Euler.
+
+**Subpasos contra el túnel**: a 4000 px/s el sol avanzaría ~70px por frame y atravesaría una letra de un salto. Se parte el frame en `pasos` (hasta 12) para que nunca avance más de `R/2` de golpe, y se hace `chocar()` en cada subpaso. **Trampa:** sin esto la colisión con el nombre sería inútil a alta velocidad.
+
+**Rebote en los cuatro bordes** del viewport: al pasarse, se reubica al borde y se invierte la componente normal multiplicada por `E`. En el suelo hay rozamiento extra en X (`vx *= 0.92`) y, si el rebote vertical es menor a 90 px/s, se anula (`vy = 0`) para que deje de temblar. Rodando por el suelo, rozamiento fuerte (`vx *= 1 - 3·dt`) hasta que baja de 6 px/s y pasa a `rest`.
+
+**El "squash"**: en cada golpe fuerte (|v|>250) se calcula un factor de aplastamiento proporcional a la velocidad (tope 0.32) y su eje. `render` lo aplica como `scale` no uniforme (se aplasta en el eje del impacto y se estira en el otro), y decae cada frame con `squash *= 0.82`.
+
+#### 3.2.2. Lo que "toca" y el gol
+
+`touch()` recorre todos los `[data-ball]` (filas de proyectos, notas, experiencia; se usan en `ArticleNav.tsx` y `Home.tsx`) y comprueba solape círculo-rect. Al tocar uno nuevo lo ilumina con `hit()`: le pone `--kick` en la dirección del golpe y le añade `.ball-hit`, cuyo keyframe da un fogonazo de color de acento y un respingo lateral de 900ms.
+
+**Trampa (`lastHit`):** el respingo mueve la fila unos px, así que el borde entraría y saldría del sol y el toque se redispararía en bucle; por eso hay un `WeakMap` que exige 900ms entre toques del mismo elemento.
+
+**El gol**: la portería es el `[data-ball-goal]`, que es el pie (`Footer.tsx`). Como el sol suele rodar a un lado fuera de la columna, la caja de gol se estira **de borde a borde** del viewport (`new DOMRect(0, r.top, viewport().w, r.height)`). Al entrar por primera vez dispara `window.dispatchEvent(new CustomEvent('ball:goal'))`. El pie escucha ese evento y muestra un mensaje de contacto (email + CV) en un bloque con `aria-live="polite"` para que se anuncie sin navegar hasta él. El propio pie lo describe como "un premio para quien juega, no un contenido".
+
+#### 3.2.3. Colisión con sólidos y quedarse sentado
+
+`chocar()` hace círculo-contra-caja para cada `Solido` publicado: halla el punto de la caja más cercano al centro del sol; si está a menos de `R`, empuja al sol por la normal y refleja la velocidad con `E`, con un pelín de rozamiento en la cara (`vx *= 0.96`). Si el centro cayó dentro de la caja (`d===0`) sale por la cara más próxima. Cuando choca, **le avisa al sólido** con `b.golpe(vx, vy, nx, ny)`. Si la normal apunta claramente hacia arriba (`ny < -0.7`), esa caja queda como `apoyo`.
+
+**Sentarse en una letra**: sobre un apoyo, con rebotes cada vez menores, cuando `vy` y `vx` bajan de umbral pasa a `rest` y guarda `apoyo = { id, dx, dy }` (el punto relativo a la esquina de la caja). En reposo sobre un sólido, cada frame busca ese sólido por `id` y se reposiciona a `b.l+dx, b.t+dy`: **va pegado a la letra y se desplaza con el scroll**. Si la letra ya no existe (cambiaste de página), `apoyo=null` y el sol vuelve a `free`, o sea **se cae**.
+
+#### 3.2.4. Accesibilidad y lanzamiento
+
+El sol es un `<button>` real con `aria-label`/`title`.
+
+- **Teclado:** `onClick` con `detail === 0` (activación por Enter/Espacio, no puntero) lo dispara hacia arriba con dirección aleatoria.
+- **`prefers-reduced-motion`**: se puede arrastrar y soltar, pero al soltar va directo a `rest` sin inercia ni rebotes; el `onClick` de teclado también se ignora. En el golpe a las letras, además, se omite el giro (ver 3.3).
+- **`touch-action: none`**: solo el sol la lleva, para poder arrastrarlo con el dedo sin que la página haga scroll; el resto sigue scrolleando normal.
+
+**El lanzamiento** (`release`): la velocidad se calcula **solo con las muestras de los últimos 90ms**. **Trampa documentada:** antes usaba la primera muestra del arrastre y el sol salía disparado aunque lo soltaras quieto; ahora, si lo sostuviste inmóvil, no hay muestras recientes y cae sin impulso. Un clic casi sin mover (`moved < 4`) da un saltito, para que se note que se puede jugar.
+
+### 3.3. La colisión con el nombre (`src/components/HeroName.tsx` + `src/lib/sol.ts`)
+
+#### 3.3.1. El registro compartido
+
+`sol.ts` define dos cosas mutables, a propósito fuera de React:
+
+- **`sol`**: `{x, y, vx, vy, visible}`. `Ball` lo escribe cada frame: posición, velocidad derivada de la posición frame a frame, y visibilidad. Lo lee quien quiera reaccionar.
+- **`solidos`**: un `Map<string, Solido[]>` agrupado por quien publica (hoy solo `'nombre'`). Cada `Solido` es una caja en coordenadas del viewport (`l,t,r,b`) más un callback `golpe(vx, vy, nx, ny)`. Cada dueño reemplaza su lista cada frame y la borra al desmontarse.
+
+#### 3.3.2. La caja REAL del glifo, medida con canvas
+
+Cada letra publica su caja de glifo medida con `canvas.measureText`, **no** la caja de su `<span>`. El porqué: la caja del `<span>` mide lo mismo para la "A" que para la "e" — incluye todo el hueco sobre las minúsculas (el ascendente de la línea). Chocar contra eso haría que el sol rebotara en aire vacío encima de una "e". `measureText` da `actualBoundingBox*` (cuánto sube y baja el glifo real respecto a la línea base) y `fontBoundingBox*` (para ubicar la línea base dentro de la caja de línea).
+
+**Trampa (por qué `offsetLeft/Top` y no `getBoundingClientRect`):** las medidas se toman con `offsetLeft/offsetTop` relativos al `<h1>`, porque el propio giro de la letra movería un `getBoundingClientRect` y contaminaría lo medido. Luego, en el frame, se suma la posición viewport del `<h1>` y el hundimiento `baja[i]`. Se re-mide con `document.fonts.ready` y con un `ResizeObserver`.
+
+**Trampa (publicar siempre):** los sólidos se publican aunque el nombre esté fuera de pantalla: si el sol está sentado en una letra, tiene que poder seguirla al hacer scroll. Solo el resto del bucle (luz, resortes) se salta cuando no es visible (`IntersectionObserver`).
+
+#### 3.3.3. Hundimiento y giro con resorte
+
+Cuando el sol golpea, `golpe(i)` recibe la velocidad y la normal. `nx,ny` apunta de la letra al sol: si le cae encima (`ny<0`) se hunde. La fuerza es la componente de la velocidad contra la normal. Empuja `vbaja` (hundimiento) y, salvo en reduced-motion, `vel` (giro) según hacia dónde iba el sol.
+
+Cada frame, dos resortes independientes:
+
+- **Hundimiento `--baja`**: resorte rígido (`-260·baja - 16·vbaja`), acotado a `[-8, 10]px`, vuelve rápido.
+- **Giro `--rot`**: resorte amortiguado con `K=70`, `C=7`, acotado a `±12°` (`MAX_ROT`).
+
+El CSS los traduce a `transform: translateY(var(--baja)) rotate(var(--rot))` con `transform-origin: 50% 88%`: la letra se hunde e inclina desde su base y regresa.
+
+#### 3.3.4. La luz
+
+Cada letra se calienta según la cercanía del sol: `luz = max(0, 1 - dist/1100) ** 1.4`, con base 0.35 si el sol no es visible. Se publica en `--luz`. `.nombre-letra` mezcla ese valor: el color va del crema/gris verdoso apagado hacia el melocotón cálido (`oklch(0.88 0.095 62)`), y el `text-shadow` es un halo cálido cuyo radio y opacidad crecen con la luz. Lanza el sol lejos y el nombre se apaga.
+
+#### 3.3.5. Dos efectos que se quitaron (decisiones)
+
+- **La sombra proyectada**: había una sombra larga en contra del sol; sobre la foto ensuciaba las letras. Se quitó — el halo de `text-shadow` es solo resplandor, no sombra direccional.
+- **El "viento"**: mecía las letras al pasar el puntero y en reposo; distraía. Se quitó. Ahora **el nombre solo se mueve cuando el sol lo golpea.**
+
+#### 3.3.6. Una línea y accesibilidad
+
+El nombre va **siempre en una sola línea**: `whitespace-nowrap` y tamaño calculado `clamp(1.5rem, calc((100vw - 2.5rem)/10.9), 3.5rem)`. El divisor 10.9 sale de que el nombre mide ~10.6 veces su tamaño de letra (medido con Geist), con margen para el balanceo; el techo de 3.5rem es lo que cabe en la columna de 42rem. **Trampa:** el espacio entre palabras va fuera del `inline-block` de cada palabra, porque dentro de un inline-block el espacio final se descarta y las palabras quedarían pegadas.
+
+Accesibilidad: el nombre completo va en un `<span class="sr-only">`, y las letras sueltas son `aria-hidden`. Sin esto, un lector de pantalla leería "A, l, e, x…" letra por letra.
+
+
+## 4. Contenido, datos e internacionalización
+
+Todo el contenido del sitio vive en TypeScript, no en un CMS ni en archivos markdown sueltos: cada pieza es un objeto tipado, y los tipos son los que hacen cumplir las reglas (traducir siempre los dos idiomas, no publicar un hueco vacío, no arrastrar la prosa al bundle inicial). Esta sección documenta ese modelo tal como está en `src/data/` y `src/i18n/`.
+
+### 4.1. El modelo de datos (`src/data/types.ts`)
+
+Todos los tipos de contenido viven en `src/data/types.ts`. El eje del diseño es la separación **metadato / prosa**, que aparece dos veces (proyectos y notas) por la misma razón de bundle.
+
+**`ProjectMeta` vs `Project`.** `ProjectMeta` es "lo que la portada necesita de un proyecto, y nada más": `slug`, `title` (nombre propio, **no se traduce** — es la identidad del proyecto), `summary` (de tipo `L`, una línea para la fila del listado), `tags`, `image`, `demo`, `repo` y `date` (ISO 8601 `YYYY-MM-DD`). `Project extends ProjectMeta` y añade la prosa larga: `decision`, `diagram` (de tipo `L`) y `body` (markdown, `L`).
+
+La separación no es cosmética, y el comentario del propio archivo lo dice: *"el índice se pinta en el bundle inicial y la ficha de detalle va en un chunk diferido. Con un solo tipo, importar el índice arrastraba los cinco cuerpos completos —en los dos idiomas— a la primera carga"*. Es decir, `Project` existe para que solo el detalle pague el costo de la prosa.
+
+**`SnippetMeta` vs `Snippet`.** El mismo patrón para las notas: `SnippetMeta` lleva `slug`, `title` (de tipo `L` — a diferencia de los proyectos, el título de una nota **sí** se traduce), `summary`, `draft: boolean` y `date`. `Snippet extends SnippetMeta` y añade `content` (markdown, `L`).
+
+**Trampa:** `draft` es un campo explícito, no `content === ''`. El comentario explica por qué: *"el índice no carga los cuerpos: no puede mirar lo que no tiene"*. Como la portada solo ve los metadatos, no puede deducir si una nota tiene cuerpo mirando `content`; necesita el dato dicho aparte.
+
+**`Job` y `Study`.** `Job` (experiencia): `role` (`L`), `company` (nombre propio, no se traduce), `summary` (`L`, "qué era el sistema y a qué escala, en una línea"), `highlights` (`L<string[]>`, máximo tres, cada una una decisión o alcance concreto), `start` (ISO `YYYY-MM`) y `end` (`string | null`, `null` = sigue vigente). `Study`: `institution`, `program` (`L`), `status` (`L`), `start`, `end`.
+
+**`Decision` — el registro de decisión.** Es el tipo que da carácter al sitio. Tres campos, todos `L`: `problem` (la restricción o el dolor concreto que forzó la decisión), `choice` (qué se eligió, en una frase) y `tradeoff` (el precio que se paga). El comentario es explícito: *"El precio que se paga por esa elección. Si esto queda vacío, no era una decisión"*. **El trade-off es obligatorio conceptualmente**: un proyecto sin trade-off no entra al índice.
+
+Nota sobre `diagram` siendo `L` y no un simple `string`: el comentario lo justifica — *"un diagrama con las cajas en español dentro de una página en inglés es la única parte que se quedaría sin traducir, y se nota"*. Los rótulos del diagrama son texto, así que también se traducen.
+
+### 4.2. La separación metadato / prosa (`index.ts` / `full.ts` / `textos.ts`)
+
+Cada colección de contenido (proyectos, notas) se reparte en tres tipos de archivo con roles distintos. Tomando proyectos como ejemplo (`src/data/projects/`):
+
+- **`index.ts`** — lo que pinta la portada. Exporta `projects: (ProjectMeta & { slug: SlugProyecto })[]`, un arreglo con los cinco proyectos y solo sus metadatos + resumen. Orden deliberado: *"Primero lo que está EN PRODUCCIÓN con usuarios reales, después las herramientas open-source"*. Es lo único que carga la portada.
+- **`textos.ts`** — los slugs y los tipos que obligan a tener ambos idiomas. Define `SlugProyecto` (unión literal de los cinco slugs), `TextoProyecto` (la prosa: `decision`, `diagram`, `body`, aquí como `string` planos porque cada archivo `es.ts`/`en.ts` es de un solo idioma) y `TextosProyecto = Record<SlugProyecto, TextoProyecto>`. **La clave está en usar `Record` sobre la unión de slugs, no sobre `string`:** *"si se añade un proyecto y se olvida su versión inglesa, el error salta al compilar y no en producción con un hueco en blanco"*.
+- **`full.ts`** — cose la prosa de los dos idiomas. Importa `meta` de `./index`, `ES` de `./es` y `EN` de `./en`, y con un `.map` reconstruye cada `Project` completo emparejando por slug: `decision`, `diagram` y `body` pasan a ser `{ es, en }`. Como `TextosProyecto` obliga a que ambos ficheros tengan todos los slugs, *"este `map` no puede producir un hueco vacío en tiempo de ejecución"*. **Importar `full.ts` arrastra los cinco cuerpos en los dos idiomas, por eso solo lo importa la página de detalle** (que ya va en chunk diferido); la portada se queda con `./index`.
+
+Las notas (`src/data/snippets/`) replican exactamente esta estructura: `index.ts` (`SnippetMeta[]`, más recientes primero), `textos.ts` (`SlugNota`, `TextoNota` con solo `content`, `TextosNota`) y `full.ts` (cose `content` de `ES`/`EN`).
+
+**Trampa:** los resúmenes (`summary`) viven a propósito en `index.ts` y NO en la prosa. Si el resumen viviera junto al cuerpo, cargar la portada arrastraría los cinco cuerpos completos en los dos idiomas al bundle inicial. El resumen es lo único de la prosa que la portada necesita, así que se sube al metadato.
+
+Sobre los cuerpos `es.ts`/`en.ts`: es **un archivo por idioma**, no `{ es, en }` intercalado dentro de cada registro. La razón: los cuerpos son de ~600 palabras y alternar idioma cada párrafo hace imposible releer la prosa de corrido, que es justo lo que hay que hacer para escribirla bien.
+
+### 4.3. Internacionalización: el idioma vive en el navegador (`src/i18n/`)
+
+**Decisión central:** el idioma vive en el **navegador** (`localStorage` + idioma del sistema como primera pista), **no en la URL**. Está escrito como decisión con precio en `lang.ts`: una sola URL sirve las dos versiones. Los segmentos de ruta van siempre en inglés, incluso leyendo en castellano: `rutaProyecto = /projects/${slug}`, `rutaNota = /notes/${slug}`. Una pieza tiene una sola URL y esa URL no cambia nunca — es lo que mantiene vivo un enlace compartido pase lo que pase con el idioma.
+
+**Trampa (el trade-off del idioma-en-navegador):** con una sola URL por pieza, **no se puede compartir el enlace de una nota "en inglés"** ni **un buscador puede indexar las dos versiones**. A cambio las URLs quedan limpias y no hay `/en` colgando de todo. El slug tampoco se traduce, precisamente para que un enlace no muera al cambiar de idioma.
+
+**`L<T> = Record<Lang, T>`** (`lang.ts`). Un valor traducido es un `Record` sobre los dos idiomas, no un opcional: *"si a un texto le falta uno, no compila. Es la única garantía que impide publicar un hueco en blanco"*. `Lang = 'es' | 'en'`, `DEFAULT_LANG = 'es'`. La función `normaliza()` recorta `en-US`, `es-419` o basura al código corto y cae a `DEFAULT_LANG` si no existe.
+
+**Dos mecanismos, dos capas:**
+
+- **`react-i18next` para los rótulos de UI** (`i18n/index.ts`, `i18n/ui.ts`). El diccionario `UI` en `ui.ts` se escribe **agrupado por clave** (los dos idiomas juntos), no un archivo por idioma, porque son cadenas de tres palabras y verlas emparejadas deja ver que "Trayectoria" y "Career" no dicen exactamente lo mismo. Lleva `satisfies Record<string, L>`, que obliga a que ningún rótulo se quede sin traducir. Como i18next quiere los recursos agrupados por idioma (lo contrario de como se escriben), `recursos` se **deriva** con `Object.fromEntries` en vez de mantener dos formas a mano. En `index.ts` se tipa i18next contra el diccionario real vía `declare module 'i18next'`, de modo que `t('clave-que-no-existe')` es error de compilación y no una clave en crudo en pantalla. Detección: `order: ['localStorage', 'navigator']` con `lookupLocalStorage: 'lang'` y `caches: ['localStorage']` — la elección explícita manda sobre el idioma del sistema y se recuerda. `load: 'languageOnly'` para que un navegador `en-US` encuentre `en` y no caiga al fallback español.
+- **`tr()` para elegir la rama de los datos** (`i18n/useLang.ts`). El hook `useLang()` expone `lang`, `t(clave)` (rótulo de UI por clave, vía i18next), `tr(valor)` (elige `valor[lang]` de un `L<T>`) y `cambiar(destino)`. La distinción es explícita: los rótulos cortos van por i18next; los cuerpos de 600 palabras *"no entran en un JSON de traducciones sin volverse inmanejables, así que se quedan en sus ficheros y aquí solo se escoge cuál"*.
+
+**Detalle fino del conmutador de idioma** (`ui.ts`): las claves `cambiarIdioma` y `verEnIdioma` son las únicas que se leen con el idioma **destino** y no con el actual (el botón anuncia el idioma al que te lleva, con el endónimo — "English" dentro de una página en castellano). El comentario documenta un bug ya corregido: antes los valores se guardaban invertidos y se leían con el idioma actual, la inversión se aplicaba dos veces y el botón anunciaba el idioma en el que ya estabas.
+
+### 4.4. Las páginas de detalle como POST
+
+Proyectos y notas comparten la misma anatomía de "entrada de blog" porque en un sitio tipo blog ambos son entradas. `ProjectDetail.tsx` y `SnippetDetail.tsx` importan de `full.ts`, buscan por `slug` de `useParams`, y si no encuentran renderizan `<NotFound />`.
+
+**Estructura de `ProjectDetail`**:
+1. `<ArticleHead>` con kicker `t('proyecto')`, fecha formateada, título, resumen, tags y enlaces (demo/código solo si existen).
+2. `<DecisionRecord>` con el registro de decisión.
+3. `<Diagram>` solo si `tr(project.diagram)` no está vacío.
+4. `<ProjectImage>` solo si hay `image` (maneja `complete` en imágenes cacheadas y oculta la figura si falla la carga).
+5. El cuerpo markdown dentro de `<Prose>`.
+6. `<ArticleNav>` con `projects[i-1]` (anterior) y `projects[i+1]` (siguiente).
+
+**`SnippetDetail`** es más simple: filtra borradores (`!s.draft`), ordena por fecha descendente, usa `splitNoteTitle` para partir el título por la barra, y monta `ArticleHead` (kicker = tema, o `t('nota')` si no hay), `Prose` y `ArticleNav`. **Trampa de dirección:** en notas *"anterior es la más antigua, siguiente la más nueva: el orden de lectura de un blog"* — por eso `prev` es `publicadas[i+1]` y `next` es `publicadas[i-1]`, invertido respecto al índice del arreglo.
+
+**`ArticleHead`**: enlace "← Volver" a `/`, metadato en una línea (`kicker · <time dateTime={dateISO}>`), `<h1>` con el titular, entradilla (`summary`), y la fila de tags + enlaces (con `↗` y texto `sr-only` "(se abre en una pestaña nueva)"). Los tags/enlaces solo se pintan si hay alguno.
+
+**`DecisionRecord`**: un `<dl>` con tres filas en orden fijo — `problem` → `problema`, `choice` → `decision`, `tradeoff` → `tradeoff`. **El trade-off lleva el acento visual:** `key === 'tradeoff' ? 'text-accent' : 'text-ink'`. El comentario lo justifica: *"es la fila que importa: sin un precio explícito no hubo una decisión, hubo una preferencia"*.
+
+**`Diagram`**: el diagrama es **texto ASCII, no una imagen** — se puede seleccionar, buscar y leer con lector de pantalla, sin costo de descarga ni salto de layout. Es un `<pre>` con `tabIndex={0}`, `role="region"` y `aria-label` traducido, con `overflow-x-auto` (una región con scroll debe ser alcanzable por teclado, o su contenido solo se lee con ratón).
+
+**`ArticleNav`**: anterior/siguiente al pie, tipo blog. Devuelve `null` si no hay ni prev ni next. Cada tarjeta es un `<Link>` con flecha (`← etiqueta` a la izquierda, `etiqueta →` a la derecha).
+
+### 4.5. `Prose`: el mapeo de markdown (`src/components/Prose.tsx`)
+
+`Prose` renderiza markdown con `react-markdown` + `remark-gfm` y un mapa de componentes propio. Puntos de diseño:
+
+- **El `#` baja a `<h2>`.** El post ya cuelga de un único `<h1>` (el titular de `ArticleHead`), así que un `#` del markdown no puede emitir un segundo `<h1>`: se mapea a `<h2>`, igual que `##`. Los `<h2>` reales llevan `id` derivado del texto con `slug()` para poder enlazar con `#ancla`.
+- **`code` / `pre` con superficie.** El código inline lleva fondo `bg-surface`; el bloque `<pre>` tiene su propio `overflow-x-auto` para que **el body nunca scrollee en horizontal**, con un reset `[&>code]` que anula la superficie del inline dentro del bloque, y `tabIndex={0}` + `role="region"` + `aria-label`.
+- **Tablas con scroll propio y accesibles.** El scroll va en un `<div>` envoltorio con `role="region"`, no sobre la `<table>` misma: un `display:block` sobre la tabla le quitaría su rol de tabla en el árbol de accesibilidad. Los `<th>` llevan `scope="col"`.
+- Enlaces externos (`/^https?:/`) reciben `target="_blank"`, `rel="noopener noreferrer"` y texto `sr-only` "(se abre en una pestaña nueva)".
+
+**Optimización:** los mapas de componentes se construyen **una vez por idioma** y se cachean en `CACHE`. Si el objeto de componentes cambiara de identidad en cada render, react-markdown volvería a montar todo el árbol de prosa.
+
+Relacionado — `src/lib/headings.ts`: `slug()` normaliza texto a ancla (minúsculas, quita tildes vía NFD, no-alfanuméricos a `-`). `encabezados()` extrae los `##` **del markdown en crudo, no del DOM renderizado** (así no hay que esperar a que `<Prose>` monte ni sincronizar dos árboles), e ignora los `##` dentro de bloques de código (`# comentario` en un shell es texto, no título). `src/lib/titles.ts` — `splitNoteTitle()` parte "NestJS | @MessagePattern vs @EventPattern" por la primera barra: `topic` (antetítulo) y `rest` (titular), para no repetir el dato.
+
+### 4.6. `format.ts`: fechas con `Intl` en UTC (`src/lib/format.ts`)
+
+Todo el formateo de fechas usa `Intl.DateTimeFormat` con `timeZone: 'UTC'` fijo. Dos decisiones documentadas:
+
+- **UTC obligatorio.** Las fechas son ISO sin hora y se parsean como UTC (`parseISO` usa `Date.UTC`). Formatear en la zona local *"puede retroceder un día, así que todo el formateo se hace en UTC"*.
+- **Locales `es-PE` y `en-GB`.** No el idioma a secas: en español se formatea para Perú, "de donde escribe". Y `en-GB` en vez de `en-US` **a propósito**, porque el orden día-mes coincide con el español y evita que la misma página cambie de convención al cambiar de idioma.
+
+Funciones: `formatDate` (largo: "5 de enero de 2023" / "5 January 2023"), `formatShortDate`, `formatRange` (usa `UI.actualidad` para `end === null`), `formatYear`, y `formatYearRange` (solo años, porque en la ficha lateral de trayectoria la columna es estrecha y el mes se partiría en tres líneas — usa `UI.hoy` para el presente).
+
+### 4.7. Perfil y experiencia: la regla de no publicar cifras del empleador
+
+**Regla dura, escrita en dos sitios.** En `experience.ts` y en el tipo `Job` (`types.ts`): de un empleador se nombra empresa, cargo, fechas, dominio del producto y tecnología, pero **no** se publica ninguna cifra suya — clientes, facturación, número de servicios, tamaño de plantilla — ni nada que describa una debilidad de sus sistemas. En los **proyectos propios sí aplica lo contrario**: ahí las cifras son suyas y van con detalle. Se ve en la práctica: la entrada "Proyectos propios" da números concretos (5 couriers, modelo canónico de 11 estados) mientras que las de Somos Ari, Zites y Petroamérica hablan de arquitectura y ownership sin cifras del empleador.
+
+**Experiencia (`experience.ts`).** Orden descendente por fecha de inicio. Datos verificables en el código:
+- **Somos Ari figura como puesto ACTUAL:** `end: null`, Full-Stack Developer, `start: '2023-09'`.
+- **Hay experiencias en paralelo:** "Proyectos propios" también tiene `end: null` con `start: '2025-09'`, y sus summaries dicen literalmente "En paralelo" / "Freelance, en paralelo" (Zites). Es decir, hay más de un `end: null` simultáneo, a propósito.
+- La lista: Proyectos propios (2025-09 → null), Somos Ari (2023-09 → null), Zites (2023-05 → 2023-09), Petroamérica (2023-01 → 2023-09). Educación: Tecsup, "Diseño y Desarrollo de Software", Egresado (2021-03 → 2023-09).
+
+**Perfil (`profile.ts`).** `name`, `cv`, `role`, `location` (todos con la versión traducida donde aplica; el nombre, el handle y el archivo del CV no se traducen). El `intro` del hero **dice "cuatro años"** literalmente ("Cuatro años en desarrollo full-stack desde Lima, Perú…" / "Four years…"). La `bio` es PERFIL, no trayectoria — "dice CÓMO DECIDE", y cada afirmación se apoya en algo verificable del propio sitio (las herramientas que escribió, la elección de texto plano sobre base de datos en mnemo, el registro de decisión de cada ficha). Regla explícita: *"nada de biografía inventada. Si una frase no se puede sostener con un repo o con una decisión documentada, no se escribe"*. La versión inglesa conserva el registro, no la literalidad. `socials`: GitHub, LinkedIn, Email.
+
+### 4.8. Tono de las notas en español
+
+Los cuerpos de las notas en español están escritos en **tono casual, primera persona, coloquial** — como se lo contarías a un colega. Es una regla explícita en el encabezado de `snippets/es.ts`: *"Tono: casual, en primera persona, como se lo contarías a un colega. Frases cortas y pocas negritas. Nada de muletillas de texto generado"*. Se ve en los títulos de sección ("Me cansé de escribir clientes para probar un handler") y en la voz de los índices, donde cada nota abre por el problema que llevó a construir la herramienta, no por la solución: *"una nota que empieza en 'cómo se hace X' es documentación; una que empieza en 'por qué X era un problema' es una decisión"*. Complementa la regla de encuadre: las notas se enmarcan en proyectos propios, nunca en trabajo de empleador. La versión inglesa traduce el registro, no palabra por palabra, para que la prosa no suene a folleto.
+
+
+## 5. Build y despliegue
+
+El portfolio es un sitio 100% estático: React + Vite compilan a HTML/CSS/JS y nginx los sirve. No hay servidor de aplicación, no hay SSR, no hay base de datos. Todo lo que sigue existe para llevar ese `dist/` desde el repo hasta la raíz de `alexanderparco.com` sin downtime y sin exponer la IP del VPS.
+
+Antes el sitio vivía en GitHub Pages. Eso se retiró: ahora se sirve como estático detrás de nginx en un VPS propio, tras un Traefik compartido, con Cloudflare delante.
+
+### 5.1 El build
+
+El pipeline de build vive en `package.json`:
+
+- `pnpm build` = `tsc -b && vite build`. Primero corre el compilador de TypeScript en modo build (`tsc -b`, con project references); si los tipos no compilan, `vite build` ni siquiera arranca. La salida es el estático en `dist/`.
+- `base: '/'` está fijado en `vite.config.ts`. El sitio vive en la **raíz** de `alexanderparco.com`, así que los assets se referencian desde `/`. **Trampa:** si algún día el sitio se sirviera bajo un subdirectorio, esto tiene que cambiar a esa ruta; si no, los `<script>` e imports apuntarían a `/assets/...` cuando en realidad estarían en `/subdir/assets/...` y el sitio cargaría en blanco. El propio `vite.config.ts` lo advierte en un comentario.
+- `packageManager: "pnpm@11.13.0"` fija la versión exacta de pnpm. Con corepack habilitado, cualquier máquina (tu laptop, el runner de CI, la imagen Docker) usa esa misma versión sin que nadie la instale a mano. Esto es lo que hace que el build sea reproducible entre entornos.
+
+**El guardián de contenido: `pnpm check`** (`scripts/check-placeholders.mjs`). Es un script que barre recursivamente `src/data/` (los `.ts` de `data/projects/` y `data/snippets/`) y **bloquea el build** (`process.exit(1)`) ante dos cosas:
+
+1. **Texto de relleno.** Busca los marcadores `[CONTEXTO]` y `TODO(alex)`. Los fragmentos de contenido llevan `[CONTEXTO]` donde todavía falta la historia real, y ese marcador **se renderiza en la página**. Sin esta barrera, un deploy distraído lo publicaría tal cual.
+2. **Tildes coladas en el inglés.** Nace de un fallo real: una pasada de acentuación sobre el castellano trató los ficheros bilingües como si fueran solo español y metió una tilde dentro de la bio en inglés. No rompe el build, no rompe los tipos, y no se ve hasta que alguien lee la página en inglés. El script revisa solo los valores `en:` de los ficheros bilingües (y `en.ts` entero), y marca cualquier palabra con `áéíóúüñ`. **Trampa:** hay una lista blanca deliberada — `Perú` (nombre propio de producto) y `Español` (el endónimo del conmutador de idioma, que en inglés se muestra correcto) — porque son las dos tildes que SÍ deben sobrevivir en texto inglés.
+
+`pnpm check` es la primera cosa que corre en CI, antes de `pnpm build`.
+
+### 5.2 La imagen Docker (`Dockerfile`)
+
+Build multi-stage.
+
+**Stage de build — `node:22-slim`.** Se usa Debian slim y **no** alpine a propósito: rolldown, lightningcss, tailwind oxide y el compilador nativo de TypeScript 7 llegan como binarios precompilados para **glibc** (`linux-x64-gnu`). Alpine usa musl; ahí pnpm instalaría otras variantes de esos binarios o directamente ninguna, y el build fallaría o se comportaría distinto. Slim da glibc sin el peso de la imagen completa de Debian.
+
+Orden de capas pensado para la caché:
+
+1. `corepack enable` (activa el pnpm que fija `packageManager`).
+2. `COPY package.json pnpm-lock.yaml ./` y `pnpm install --frozen-lockfile`. Las deps van **primero y solas**: si solo cambia el código de la app pero no las dependencias, Docker reutiliza esta capa y no reinstala nada. `--frozen-lockfile` obliga a que el lockfile mande — si `package.json` y el lock discrepan, falla en vez de resolver a lo que le parezca.
+3. `COPY . .` y `pnpm build` → `dist/`.
+
+**Stage de runtime — `nginx:1.27-alpine`.** Aquí sí alpine: nginx no depende de esos binarios nativos, así que la imagen final es mínima. Copia `nginx.conf` a `/etc/nginx/conf.d/default.conf`, copia el `dist/` del stage de build a `/usr/share/nginx/html`, y `EXPOSE 80`. La imagen final no lleva Node, ni el código fuente, ni `node_modules`: solo nginx y el estático.
+
+`.dockerignore` mantiene el contexto de build limpio: excluye `.git`, `.deploy` (los secretos del deploy), `node_modules`, `dist` y `*.tsbuildinfo`. Que `dist` esté ignorado importa — el `dist/` que se sirve es el que produce el build **dentro** de la imagen, nunca uno que se hubiera colado desde la máquina que dispara el build.
+
+### 5.3 `nginx.conf`
+
+Un solo `server` en el puerto 80. nginx corre **detrás de Traefik**, que termina el TLS; nginx solo ve http interno. Puntos clave:
+
+- **`absolute_redirect off`.** Con TLS terminado en Traefik, nginx ve el request como http. Con redirects relativos, el navegador conserva el `https://` original en vez de que nginx lo mande a un `http://` absoluto.
+- **SPA — `location /` con `try_files $uri /index.html`.** Las rutas de React Router (`/projects/…`, `/notes/…`, `/about`) no existen como archivo; las resuelve el router en el navegador. Todo lo que no sea un archivo real cae en `index.html`.
+- **`index.html` con `Cache-Control: no-cache`.** `index.html` es lo que apunta a los assets con hash. **Trampa:** si `index.html` se cacheara, un cliente seguiría pidiendo el bundle de una versión anterior tras un deploy. Por eso no se cachea nunca; los assets sí, porque su nombre cambia con cada build.
+- **`/assets/` con caché de 1 año inmutable.** Los assets de Vite llevan hash de contenido en el nombre, así que son inmutables: `expires 1y` + `Cache-Control: public, immutable`. Aquí `try_files $uri =404` (no cae en index.html): **Trampa:** devolver `index.html` como si fuera un `.js` daría un error de MIME confuso en el navegador en vez de un 404 claro.
+- **Archivos de `public/` con 7 días.** El regex `^/[^/]+\.(jpg|png|svg|ico|pdf|glb)$` cubre `hero.jpg`, el CV, el favicon y el modelo `.glb` del lab. Estos **no** llevan hash, así que `expires 7d` sin `immutable`: si se cambia la foto o el CV, se ve como mucho a los 7 días sin tener que renombrarlos.
+- **gzip con `gzip_proxied any`.** **Trampa:** el default de nginx (`gzip_proxied off`) no comprime nada que llegue a través de un proxy, y aquí **todo** llega a través de Traefik. Sin `any`, no se comprimiría absolutamente nada. Comprime text/plain, css, javascript, json y svg.
+- **Cabeceras de seguridad** (`Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`). **Trampa importante:** `add_header` **no se hereda** hacia un `location` que declare sus propias cabeceras — nginx reemplaza la lista entera, no la fusiona. Por eso las cuatro cabeceras están **repetidas** en cada `location` (`/`, `/assets/`, y el de `public/`). Si se agregan en el bloque `server` y se olvidan en un `location`, ese `location` sale sin ninguna.
+
+### 5.4 `deploy.yml` y la CLI `deploy`
+
+El despliegue se describe en `deploy.yml`:
+
+- Un solo servicio `web`: `build: .` con `dockerfile: Dockerfile`, `port: 80`, `domain: alexanderparco.com`, `healthcheck: /` (nginx sirve `index.html` → 200) y `startup_timeout: 30`.
+- `proxy.ssl: true` con Let's Encrypt (email `alexparco16@gmail.com`).
+- El host/puerto/llave del `server` vienen de variables (`${SERVER_HOST}`, `${SERVER_PORT}`, `${SERVER_KEY}`), que se rellenan desde los secretos en CI.
+
+La herramienta es una CLI propia, `github.com/AlexParco/deploy`, inspirada en Kamal pero **sin registro de imágenes**. El flujo de `deploy deploy`, con **cero downtime**, es:
+
+1. `rsync` del código al VPS.
+2. **Build en el VPS** (no en el runner; por eso no hace falta registro ni push de imagen). Cada sitio tiene su propia imagen, etiquetada por SHA.
+3. Levanta el contenedor nuevo **sin ruta** en Traefik todavía (nadie le manda tráfico aún).
+4. **Health check** contra `/`.
+5. Recién si pasa el health check, **reescribe la ruta de Traefik** para apuntar al contenedor nuevo.
+6. **Retira el anterior.**
+
+El orden (verificar salud → enrutar → retirar el viejo) es lo que garantiza cero downtime: si el contenedor nuevo no arranca sano, el tráfico se queda en el viejo y el deploy falla sin tumbar el sitio.
+
+**www.** La CLI rutea **un** dominio por servicio, así que `www.alexanderparco.com` no lo maneja el servicio; se resuelve con una Redirect Rule / Page Rule de Cloudflare (`www → apex`, 301), igual que en otros proyectos (tracking-peru).
+
+### 5.5 CI (`.github/workflows/deploy.yml`)
+
+Dispara en `push` a `main` (y `workflow_dispatch` manual). `concurrency: deploy-portfolio` con `cancel-in-progress: false` — dos pushes seguidos se serializan en vez de cancelarse, para no dejar un deploy a medias.
+
+Dos jobs:
+
+- **`build`:** checkout, setup-node 22, `corepack enable`, `pnpm install --frozen-lockfile`, luego **`pnpm check`** (el guardián de la §5.1) y **`pnpm build`**. Si el check falla o los tipos no compilan, el deploy no corre.
+- **`deploy`** (`needs: build`): clona la CLI `deploy` desde GitHub, la buildea y la enlaza (`npm link`); configura SSH escribiendo `~/.ssh/deploy_key` desde el secret `SSH_PRIVATE_KEY` (con `StrictHostKeyChecking no`); arma `.deploy/secrets` con `SERVER_HOST`, `SERVER_PORT` y `SERVER_KEY=~/.ssh/deploy_key`; y corre `deploy deploy`.
+
+**Secrets del repo:** `SERVER_HOST`, `SERVER_PORT`, `SSH_PRIVATE_KEY`.
+
+### 5.6 Infraestructura: VPS, Traefik compartido y Cloudflare
+
+Estado real verificado tras el despliegue.
+
+**El VPS.** `72.60.25.251`, usuario `deploy`, SSH en el puerto `2359`, Debian 13. El build de la imagen ocurre en esta máquina (§5.4).
+
+**Traefik compartido.** Un único Traefik (`deploy-traefik`) tiene los puertos `80/443` del host y enruta por archivos YAML en `/opt/deploy/.traefik/dynamic/*.yml` — **uno por sitio**. El `certResolver` es Let's Encrypt vía **HTTP-01**.
+
+**Aislamiento ("opción A").** En un solo host, los puertos 80/443 los tiene un solo proceso (Traefik), así que **todo** sitio pasa por él. Pero cada sitio tiene su **propio contenedor, su propia imagen (etiquetada por SHA) y su propio archivo de ruta**. Un deploy o un crash del portfolio **no afecta** a los otros sitios (tracking-peru, shalom, etc.), porque el deploy verifica salud antes de enrutar (§5.4). El **único** punto único de fallo compartido es el proceso Traefik + `acme.json`. Independencia total exigiría otro VPS; es un trade-off consciente de costo contra aislamiento.
+
+**Cloudflare, en dos fases para ocultar la IP.** **Trampa de fondo:** Traefik pide el certificado por HTTP-01, y eso choca con el proxy naranja de Cloudflare — Cloudflare fuerza HTTPS y corta la validación HTTP-01. La secuencia que funciona:
+
+- **Fase 1:** el registro A del apex en nube **GRIS** (DNS only). Con la IP expuesta temporalmente, Let's Encrypt valida por HTTP-01 y **emite el cert**.
+- **Fase 2:** una vez emitido, SSL/TLS en modo **Full (strict)**; **"Always Use HTTPS" en OFF**; y recién ahí se pasa el registro A a nube **NARANJA** (proxied).
+  - **Trampa:** si "Always Use HTTPS" se enciende, la **renovación** HTTP-01 se rompe a los 90 días (mismo choque de la Fase 1). El redirect http→https no hace falta en Cloudflare porque **ya lo hace Traefik**.
+  - `www → apex` con una **Page Rule** (Forwarding URL 301).
+
+**Resultado verificado:** el dominio resuelve a IPs de Cloudflare (la IP del VPS queda oculta), certificado válido, `www` redirige al apex, y http fuerza https.
