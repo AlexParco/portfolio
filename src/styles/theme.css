@@ -2,7 +2,7 @@
 
 @theme {
   /* ─── Color ────────────────────────────────────────────────────────────
-     Sacada de hero.jpg, y SOLO oscura: la foto es un paisaje en penumbra y el sitio
+     Inspirada en un paisaje al atardecer, y SOLO oscura: la portada es un cielo en penumbra (hero-sky) y el sitio
      es su continuacion. Hubo un tema claro y se quito: la foto disolviendose hacia
      papel crema dejaba una franja gris sucia, y sin la foto el claro no tenia nada
      que ver con la portada. El verde casi negro es la sombra del bosque, el texto
@@ -116,25 +116,31 @@ a {
   color: var(--color-ink);
 }
 
-/* ─── Hero ────────────────────────────────────────────────────────────────
-   La foto se disuelve por abajo con una MASCARA, no con un degradado al color de
-   fondo: asi se funde sin repetir el valor de --color-bg. El velo oscuro va dentro
-   de la misma mascara y solo existe para el texto crema: arriba (navegacion sobre
-   el cielo) y en la franja del nombre. */
-.hero-fade {
-  -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 80%, transparent 100%);
-}
-.hero-veil {
+/* ─── Hero: el cielo de atardecer (Hero.tsx) ───────────────────────────────
+   Sustituye a la foto. Dos capas sobre el fondo de la pagina:
+     1. un resplandor radial calido en la esquina superior derecha, donde descansa
+        el sol (Ball.tsx): es la luz del horizonte, el acento melocoton;
+     2. un degradado vertical que va de un cielo verde-grisaceo en penumbra arriba,
+        pasa por una franja calida a media altura, y se disuelve a --color-bg abajo
+        —sin corte, porque TERMINA en el color del fondo—, dejando la mitad baja
+        oscura para que el nombre en crema se lea.
+   Es nitido a cualquier resolucion y no descarga nada. */
+.hero-sky {
   background:
-    linear-gradient(to bottom, oklch(0.12 0.01 155 / 0.55) 0%, transparent 24%),
-    linear-gradient(to top, oklch(0.12 0.01 155 / 0.65) 18%, transparent 55%);
+    radial-gradient(
+      70% 58% at 72% 18%,
+      oklch(0.80 0.09 62 / 0.42) 0%,
+      oklch(0.62 0.07 55 / 0.14) 34%,
+      transparent 62%
+    ),
+    linear-gradient(
+      to bottom,
+      oklch(0.235 0.018 135) 0%,
+      oklch(0.285 0.03 80) 38%,
+      oklch(0.215 0.022 150) 66%,
+      var(--color-bg) 100%
+    );
 }
-@keyframes hero-in {
-  from { opacity: 0; transform: scale(1.04); }
-  to   { opacity: 1; transform: none; }
-}
-.hero-img { animation: hero-in 1.2s var(--ease-out) both; }
 
 /* ─── El sol (Ball.tsx) ────────────────────────────────────────────────────
    La luz del horizonte hecha objeto: un circulo con su propio resplandor. Va

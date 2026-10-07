@@ -6,7 +6,7 @@ Este documento describe el **diseño actual** del sitio (`alexanderparco.com`): 
 
 ## La idea en una frase
 
-Un paisaje en penumbra (`hero.jpg`) como portada, y el sitio entero como su continuación: paleta sacada de la foto, texto crema sobre verde de bosque, y un único acento melocotón —la luz del horizonte— que solo marca lo que se puede pulsar. Encima, un sol que se agarra, se lanza y choca con las letras del nombre. Debajo, contenido que se lee como un blog: proyectos y notas, cada uno con su **registro de decisión** (problema, elección y el precio que se pagó).
+Un cielo de atardecer dibujado en CSS como portada, y el sitio entero como su continuación: paleta de verdes de bosque y luz melocotón, texto crema sobre verde de bosque, y un único acento melocotón —la luz del horizonte— que solo marca lo que se puede pulsar. Encima, un sol que se agarra, se lanza y choca con las letras del nombre. Debajo, contenido que se lee como un blog: proyectos y notas, cada uno con su **registro de decisión** (problema, elección y el precio que se pagó).
 
 ## Mapa del documento
 
@@ -40,7 +40,7 @@ La declaración de modo oscuro es doble y deliberada:
 
 ### 1.2 La paleta — tokens de color
 
-Todos los colores están en `oklch()` y salen de `hero.jpg` (colinas verdes, cielo de tormenta, franja de luz melocotón en el horizonte). El hilo conductor es el matiz verde (~155) para las superficies —"la sombra del bosque"— y el melocotón cálido para el acento —"la luz del horizonte"—.
+Todos los colores están en `oklch()` y evocan un paisaje al atardecer (verdes de bosque en penumbra, franja de luz melocotón en el horizonte). Nacieron de una foto que fue la portada; hoy esa portada es un cielo dibujado en CSS con estos mismos tokens (ver §3.1). El hilo conductor es el matiz verde (~155) para las superficies —"la sombra del bosque"— y el melocotón cálido para el acento —"la luz del horizonte"—.
 
 Fondos y superficies:
 
@@ -177,7 +177,7 @@ Los enlaces internos no escriben las rutas a mano: usan helpers de `src/i18n/lan
 El orden de la portada, de arriba abajo:
 
 1. **Hero** (`<Hero />`): la foto/cabecera sobre la que flota el header en modo overlay.
-2. **Intro**: un `<section>` con la entradilla (`profile.intro`) y una lista de enlaces sociales + el CV. Lleva `-mt-6` a propósito para que la entradilla suba hasta la cola de la máscara del hero y foto y texto se lean como una sola pieza.
+2. **Intro**: un `<section>` con la entradilla (`profile.intro`) y una lista de enlaces sociales + el CV. Lleva `-mt-6` a propósito para que la entradilla suba hacia la base del hero, donde el cielo ya se disolvió en el fondo, y cielo y texto se lean como una sola pieza.
 3. **Proyectos** (`Section id="proyectos"`): lista de `projects`, cada uno con título, año (`formatYear`) y resumen, enlazando al detalle vía `rutaProyecto(p.slug)`.
 4. **Notas** (`Section id="notas"`): lista de `snippets` **ordenados por fecha, la más reciente primero**. El orden se calcula una sola vez a nivel de módulo: `const notasPorFecha = [...snippets].sort((a, b) => b.date.localeCompare(a.date))`. Los borradores (`s.draft`) se pintan atenuados y sin enlace.
 5. **Experiencia** (`Section id="experiencia"`): lista compacta de `experience` (rango de años + empresa + rol) y, al final, un enlace **`/about`** con `t('masSobreMi')`.
@@ -232,19 +232,19 @@ La portada es la pieza central: una foto a sangre, un nombre en crema encima y u
 
 ### 3.1. El hero
 
-El contenedor es un `<section>` que **rompe la columna** con `mx-[calc(50%-50vw)]` (`src/components/Hero.tsx`). En vez de sacar la portada fuera del `<main>`, se queda como una página más dentro del contenedor y estira sus márgenes negativos hasta los bordes del viewport. El comentario del archivo lo explica: así "el shell no necesita saber nada" y la cabecera puede flotar encima sobre el cielo de la foto. Su alto es fluido: `h-[clamp(460px,82vh,820px)]` con `overflow-hidden`.
+El contenedor es un `<section>` que **rompe la columna** con `mx-[calc(50%-50vw)]` (`src/components/Hero.tsx`). En vez de sacar la portada fuera del `<main>`, se queda como una página más dentro del contenedor y estira sus márgenes negativos hasta los bordes del viewport. El comentario del archivo lo explica: así "el shell no necesita saber nada" y la cabecera puede flotar encima sobre el cielo. Su alto es fluido: `h-[clamp(400px,68vh,680px)]` con `overflow-hidden`.
 
-La foto es `hero.jpg`, cargada desde `import.meta.env.BASE_URL`, a `object-cover object-[center_58%]` para encuadrar hacia abajo del centro, con `fetchPriority="high"` y `decoding="async"` porque es lo primero que se ve.
+> **Hubo una foto (`hero.jpg`) y se quitó.** Era de baja resolución (1600×1002) y muy comprimida, y a todo el ancho se veía blanda. En su lugar, el fondo es un **cielo de atardecer dibujado en CSS** (`.hero-sky`), que reproduce la misma atmósfera con los tokens de la paleta: nítido a cualquier resolución y sin descargar nada. Por eso ya no existen `.hero-fade`, `.hero-veil` ni `.hero-img`.
 
-**La máscara que la disuelve por abajo** vive en `.hero-fade` (`theme.css`): una `mask-image` con `linear-gradient(to bottom, #000 80%, transparent 100%)`. Es decir, la imagen es opaca hasta el 80% de su alto y de ahí al 100% se desvanece a transparente, fundiéndose con el fondo de la página. **Trampa:** por eso el bloque del nombre se coloca dentro del 80% superior (con `pb-[24%]`); si cayera en el tramo disuelto, quedaría sin foto detrás.
+**El cielo** vive en `.hero-sky` (`theme.css`), dos capas sobre `--color-bg`:
+1. un **resplandor radial cálido** en la esquina superior derecha (`radial-gradient(... at 72% 18%, oklch(0.80 0.09 62 / 0.42) ...)`), que es la luz del horizonte, donde descansa el sol;
+2. un **degradado vertical** que va de un cielo verde-grisáceo en penumbra arriba, pasa por una franja cálida a media altura, y **termina en `var(--color-bg)`** abajo — así se disuelve en el fondo de la página sin corte, dejando la mitad baja oscura para que el nombre en crema se lea.
 
-**El velo** es `.hero-veil`: dos gradientes verdosos muy oscuros (`oklch(0.12 0.01 155 / …)`), uno bajando desde arriba (para que la navegación en crema se lea sobre el cielo) y otro subiendo desde abajo (para que el nombre en crema tenga contraste sobre la foto). No tiñe el centro de la foto, solo los bordes donde va texto claro.
+**El texto encima va en `cream`, no en `ink`**: es el papel que va sobre el cielo (la mitad baja es oscura), no el del fondo del sitio. Arriba del nombre, en fuente mono, va rol y ubicación.
 
-**El texto encima va en `cream`, no en `ink`**: el color del texto depende de la foto, no del fondo del sitio. Arriba del nombre, en fuente mono, va rol y ubicación.
+**El ancla `#sol`** es un `<span>` vacío y `aria-hidden` posicionado sobre su propio resplandor: `top-[24%] left-[70%]` en móvil, `sm:top-[20%] sm:left-[72%]` en desktop. Ahí descansa el sol antes de que nadie lo toque; `Ball` lo lee por `getElementById('sol')`.
 
-**El ancla `#sol`** es un `<span>` vacío y `aria-hidden` posicionado sobre el horizonte: `top-[21%] left-[70%]` en móvil, `sm:top-[14%] sm:left-[72%]` en desktop. Ahí descansa el sol antes de que nadie lo toque; `Ball` lo lee por `getElementById('sol')`.
-
-**La entrada** es `.hero-img` con `animation: hero-in 1.2s`: el keyframe `hero-in` va de `opacity:0; scale(1.04)` a opacidad plena sin transformar. Es el fundido con un leve deszoom.
+**La entrada**: el hero no tiene animación propia; entra con el fundido de ruta (`.enter`) del `<main>`, igual que el resto de la página.
 
 ### 3.2. El sol (`src/components/Ball.tsx`)
 
